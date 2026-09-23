@@ -1,4 +1,4 @@
-import { defineRepo } from 'rvlib-shipkit'
+import { defineRepo } from 'rvlib-shipkit/src/repo-config.ts'
 
 export default defineRepo({
     name: 'lora-loader-free-extension',
