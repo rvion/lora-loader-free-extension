@@ -1,0 +1,46 @@
+{
+   "compilerOptions": {
+      // real node resolution, no bundler hand-waving — what tsc resolves is
+      // what bun resolves at runtime (bun follows tsconfig paths)
+      "module": "nodenext",
+      "moduleResolution": "nodenext",
+
+      // the pair that legalizes `from 'src/foo/Bar.ts'` — extensions are part
+      // of the exact-path search key; tsc only typechecks, bun/vite emit
+      "allowImportingTsExtensions": true,
+      "noEmit": true,
+
+      // THE mapping that makes 'src/...' specifiers resolve. No baseUrl —
+      // explicit paths only, so bare specifiers can't collide with packages.
+      // paths doubles as an escape hatch for deps with broken "exports"
+      // (map the submodule) — but bun follows these at RUNTIME too, so
+      // runtime-loaded packages need "exports" patches instead, or bun
+      // resolves a .d.ts where it needs a .js.
+      "paths": {
+         "src/*": ["./src/*"],
+         "scripts/*": ["./scripts/*"]
+      },
+
+      // every file is a module even with no import/export (standalone scripts)
+      "moduleDetection": "force",
+
+      // the house TS standard is all five, always on (meta/rv-conventions):
+      // strict alone leaves dead locals and fallthrough bugs in the codebase
+      "strict": true,
+      "noUncheckedIndexedAccess": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noFallthroughCasesInSwitch": true,
+      "isolatedModules": true,
+      "skipLibCheck": true,
+      "incremental": true,
+      "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json"
+   },
+   // NO root `*.ts` glob: it picks up a config file like repo.config.ts,
+   // and a dependency imported from there whose package points at raw .ts
+   // (rvlib-shipkit does) gets walked and typechecked in full, since
+   // skipLibCheck covers .d.ts only. The repo then fails on code its owner
+   // cannot edit. List a root file BY NAME when it earns checking, the way
+   // a vite repo lists vite.config.ts
+   "include": ["src", "scripts"]
+}

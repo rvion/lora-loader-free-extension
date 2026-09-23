@@ -1,0 +1,45 @@
+{
+   // the hub is the one process every wired repo starts, so it opens with the
+   // folder itself. It runs every check after each save and its problem
+   // matcher fills the problems pane, so there is no type checker task. A
+   // stack that earns more long-running watchers (dev server, css) adds a
+   // master task with runOn folderOpen whose dependsOn lists them all, the hub
+   // included, and moves runOn off the hub.
+   "version": "2.0.0",
+   "tasks": [
+      {
+         "label": "🚀  shipkit",
+         "detail": "The shipkit hub at http://localhost:4913, and every check's findings in the problems pane — clickable URLs: the page, /graph/wiki, /graph/agent",
+         "type": "process",
+         "command": "bun",
+         "args": ["run", "hub"],
+         "options": { "cwd": "${workspaceFolder}" },
+         "isBackground": true,
+         "presentation": { "reveal": "always", "close": false },
+         "group": { "kind": "build", "isDefault": true },
+         "runOptions": { "runOn": "folderOpen", "instanceLimit": 1 },
+         "problemMatcher": {
+            "owner": "shipkit",
+            "source": "shipkit",
+            "fileLocation": [
+               "relative",
+               "${workspaceFolder}"
+            ],
+            "pattern": {
+               "regexp": "^(.+?):(\\d+):(\\d+): (error|warning) (\\S+?): (.*)$",
+               "file": 1,
+               "line": 2,
+               "column": 3,
+               "severity": 4,
+               "code": 5,
+               "message": 6
+            },
+            "background": {
+               "activeBegin": false,
+               "beginsPattern": "^shipkit problems: begin$",
+               "endsPattern": "^shipkit problems: end\\b"
+            }
+         }
+      }
+   ]
+}

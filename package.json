@@ -1,0 +1,21 @@
+{
+    "name": "lora-loader-free-extension",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "lint": "shipkit ci --only lint",
+        "lint:raw": "oxlint src/",
+        "fmt": "oxfmt src/",
+        "typecheck": "shipkit ci --only typecheck",
+        "typecheck:raw": "tsc --noEmit",
+        "hub": "bun --watch node_modules/rvlib-shipkit/src/cli.ts serve"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.4.2",
+        "oxfmt": "^0.70.0",
+        "oxlint": "^1.85.0",
+        "rvlib-shipkit": "^1.0.1",
+        "typescript": "^7.0.2"
+    }
+}

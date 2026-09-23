@@ -1,0 +1,35 @@
+{
+   // THE key pair: auto-import inserts 'src/...' absolute specifiers, never
+   // './relative'. Modern tsserver respects this reliably.
+   // the ONE key that makes auto-import write `src/foo/Bar.ts`, not
+   // `../foo/Bar`. It is the only real id in that family (`…Ending` aside);
+   // vscode ignores unknown keys in silence, so an invented name looks like
+   // it works
+   "js/ts.preferences.importModuleSpecifier": "non-relative",
+
+   // use the workspace typescript (native ts7 compiler), not vscode's bundled one
+   "js/ts.tsdk.path": "node_modules/typescript/lib",
+
+   // auto-imports emit `import type` — saves don't fight the lint's
+   // consistent-type-imports rule
+   "js/ts.preferences.preferTypeOnlyAutoImports": true,
+
+   // kill junk suggestions: only tsserver speaks, no word-soup completions
+   "editor.suggest.showWords": false,
+   "editor.wordBasedSuggestions": "off",
+   "js/ts.preferences.includePackageJsonAutoImports": "off",
+
+   // rename the real symbol, not an import alias; rename both jsx tags
+   "js/ts.preferences.useAliasesForRenames": false,
+   "js/ts.preferences.renameMatchingJsxTags": true,
+
+   // big-repo hygiene: more tsserver memory, no npm probing, no auto type acquisition
+   "js/ts.tsserver.maxMemory": 6144,
+   "js/ts.tsserver.automaticTypeAcquisition.enabled": false,
+   "js/ts.tsserver.checkNpmIsInstalled": false,
+
+   // oxc lints in-editor; eslint off; formatter owns formatting, not tsserver
+   "oxc.enable": true,
+   "eslint.enable": false,
+   "js/ts.format.enabled": false
+}
