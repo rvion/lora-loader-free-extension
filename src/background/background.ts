@@ -38,6 +38,8 @@ const handlers: Handlers = {
   libraryStatus: async (req) => (await client()).libraryStatus(req.modelId, req.versionId),
   folderChoices: async (req) => (await client()).folderChoices(req.prefix),
   activeDownload: async (req) => (await getActive())[String(req.versionId)] ?? null,
+  ping: async () => (await client()).ping(),
+  restartComfy: async () => (await client()).restartComfy(),
   clearActive: async (req) => {
     await setActive(req.versionId, null);
     return null;

@@ -15,6 +15,9 @@ header { display: flex; justify-content: space-between; align-items: center; mar
 p { margin: 6px 0; }
 .muted { color: #909296; }
 .error { color: #ff6b6b; word-break: break-word; }
+.good { color: #51cf66; }
+.restart { margin-top: 8px; }
+button.danger { background: #c92a2a; border-color: #c92a2a; font-weight: 600; }
 .good-text { color: #51cf66; font-weight: 600; }
 .folder { display: grid; gap: 6px; margin: 8px 0; }
 label { display: grid; gap: 2px; font-size: 11px; color: #909296; }

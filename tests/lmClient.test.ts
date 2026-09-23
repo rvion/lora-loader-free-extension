@@ -95,3 +95,18 @@ test("subfolder input is normalized to a relative forward slash path", () => {
   expect(normalizeSub("\\style\\anime")).toBe("style/anime");
   expect(normalizeSub("//a//b")).toBe("a/b");
 });
+
+test("restart falls through missing routes and names the one that worked", async () => {
+  const lm = fakeLm({ "/manager/reboot": { body: {} } });
+  expect(await lm.client.restartComfy()).toBe("POST /manager/reboot");
+  expect(lm.calls.map((c) => c.url)).toEqual([
+    "http://127.0.0.1:8188/api/manager/reboot",
+    "http://127.0.0.1:8188/manager/reboot",
+  ]);
+});
+
+test("restart refused by security level, or absent, is an error", async () => {
+  const refused = fakeLm({ "/api/manager/reboot": { status: 403, body: {} } });
+  await expect(refused.client.restartComfy()).rejects.toThrow("security_level");
+  await expect(fakeLm({}).client.restartComfy()).rejects.toThrow("ComfyUI-Manager");
+});

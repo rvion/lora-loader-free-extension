@@ -11,6 +11,7 @@ import {
 import type { FolderChoices, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
+import { RestartSt } from "src/shared/RestartSt.ts";
 import {
   getLastFolder,
   getMarked,
@@ -33,11 +34,17 @@ export class CardSt {
   download: DownloadSvc;
   marks: MarkSvc;
   server: ServerSvc;
+  restart: RestartSt;
   collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
     this.server = new ServerSvc(this);
+    this.restart = new RestartSt({
+      restart: () => send({ kind: "restartComfy" }),
+      ping: () => send({ kind: "ping" }),
+      onBack: () => void this.refreshForVersion(),
+    });
     this.library = new LibrarySvc(this);
     this.folder = new FolderSvc(this);
     this.download = new DownloadSvc(this);
@@ -49,6 +56,7 @@ export class CardSt {
       download: false,
       marks: false,
       server: false,
+      restart: false,
     });
   }
 

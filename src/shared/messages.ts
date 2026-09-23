@@ -1,7 +1,7 @@
 // content/popup → background protocol. every LoRA Manager call crosses here
 // (agent/architecture.md, "why the background owns every LM call")
 import type { LmPrefix } from "src/shared/civitai.ts";
-import type { DownloadProgress, FolderChoices, LibraryStatus } from "src/shared/lmClient.ts";
+import type { DownloadProgress, FolderChoices, LibraryStatus, Ping } from "src/shared/lmClient.ts";
 import type { FolderPick } from "src/shared/storage.ts";
 
 export type DownloadTarget = {
@@ -18,6 +18,8 @@ export type Protocol = {
   startDownload: { req: { target: DownloadTarget }; res: { downloadId: string } };
   progress: { req: { downloadId: string }; res: DownloadProgress };
   activeDownload: { req: { versionId: number }; res: string | null };
+  ping: { req: Record<never, never>; res: Ping };
+  restartComfy: { req: Record<never, never>; res: string };
   clearActive: { req: { versionId: number }; res: null };
 };
 

@@ -15,6 +15,15 @@ server, default `http://127.0.0.1:8188`.
 
 `<prefix>` is `loras`, `checkpoints` or `embeddings`.
 
+## ComfyUI-Manager restart (not LoRA Manager)
+
+Core ComfyUI has no restart route. ComfyUI-Manager (`glob/manager_server.py`)
+has `POST /manager/reboot` (current) and `GET /manager/reboot` (old
+versions); ComfyUI also serves both under `/api`. It answers 403 unless its
+`security_level` is `normal`, `normal-` or `weak`. The process dies while
+answering, so a network error on that request means "sent". The live check
+pings `/api/lm/version-info` (3 s timeout): down first, then up again.
+
 ## Gotchas
 
 - `/api/lm/downloads/queue/add` only records a row: nothing on the server

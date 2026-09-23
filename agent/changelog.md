@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-23
 
+- Restart ComfyUI button (card ⚙ panel and popup) through ComfyUI-Manager's
+  reboot route, newest route first. RestartSt then requires ComfyUI to go
+  DOWN before it accepts UP, so a restart that never happened reads as a
+  failure instead of an instant success.
+
 - Server address editable from the card (⚙, and shown by itself when LM is
   unreachable) as well as the popup and the Options page. Saving normalizes
   host, ip:port or url, and every open card re-checks. Fixed "http://" being

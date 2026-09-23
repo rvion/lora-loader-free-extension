@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { obs } from "rvlib-mobx";
 
 import { PopupSt, type Launched } from "src/popup/PopupSt.ts";
+import { RestartPanel } from "src/shared/RestartPanel.tsx";
 import type { MarkedItem } from "src/shared/storage.ts";
 import type { DownloadState } from "src/shared/watchDownload.ts";
 
@@ -57,6 +58,7 @@ const Connection = obs(function Connection(p: { st: PopupSt }) {
           ) : null}
         </span>
       </div>
+      <RestartPanel st={st.restart} />
     </section>
   );
 });

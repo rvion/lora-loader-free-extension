@@ -43,6 +43,20 @@ Controls (hidden when in library):
   runs 5 at a time and queues the rest. Each row shows its progress, and a
   row leaves the list once its version is in the library).
 
+## Restart ComfyUI (card ⚙ panel and popup)
+
+A **Restart ComfyUI** button, with an inline "Really restart?" confirm (it
+kills a running generation). Needs the ComfyUI-Manager custom node. Then a
+live line:
+
+| phase | shown |
+|---|---|
+| sending | "Asking ComfyUI to restart…" |
+| going down | "Waiting for ComfyUI to stop… Ns" |
+| coming back | "Restarting… Ns" |
+| back | green "Back in Ns, LoRA Manager <version>". The card re-checks |
+| failed | red reason: no ComfyUI-Manager, blocked by its security_level, never went down within 30 s, or not back within 5 min |
+
 ## Failure is loud
 
 Every failed call surfaces its error text on the card or popup row. Nothing

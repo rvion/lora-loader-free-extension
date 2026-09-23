@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
+import { RestartSt } from "src/shared/RestartSt.ts";
 import {
   DEFAULT_LM_URL,
   getMarked,
@@ -21,6 +22,7 @@ export class PopupSt {
   urlDraft = DEFAULT_LM_URL;
   savedUrl = DEFAULT_LM_URL;
   test: Query<string>;
+  restart: RestartSt;
   marked: MarkedItem[] = [];
   launched: Launched[] = [];
   isLaunching = false;
@@ -28,7 +30,12 @@ export class PopupSt {
 
   constructor() {
     this.test = new Query(() => send({ kind: "lmVersion", url: this.urlDraft }));
-    makeAutoObservable(this, { test: false });
+    this.restart = new RestartSt({
+      restart: () => send({ kind: "restartComfy" }),
+      ping: () => send({ kind: "ping" }),
+      onBack: () => void this.test.run(),
+    });
+    makeAutoObservable(this, { test: false, restart: false });
     void this.init();
   }
 

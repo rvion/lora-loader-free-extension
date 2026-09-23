@@ -1,6 +1,7 @@
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
+import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
 export const Card = obs(function Card(p: { st: CardSt }) {
   const st = p.st;
@@ -54,6 +55,7 @@ const ServerField = obs(function ServerField(p: { st: CardSt }) {
         </span>
       </label>
       {sv.saveError != null && <p className="error">{sv.saveError}</p>}
+      <RestartPanel st={p.st.restart} />
     </div>
   );
 });

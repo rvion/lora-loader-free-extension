@@ -19,6 +19,18 @@ export type DownloadProgress =
   /** the server no longer knows this id: finished long ago, or never started */
   | { kind: "unknown" };
 
+export type Ping = { up: false } | { up: true; version: string };
+
+const PING_TIMEOUT_MS = 3000;
+
+/** newest first. ComfyUI mirrors every custom route under /api, older builds do not */
+const RESTART_ROUTES = [
+  { method: "POST", path: "/api/manager/reboot" },
+  { method: "POST", path: "/manager/reboot" },
+  { method: "GET", path: "/api/manager/reboot" },
+  { method: "GET", path: "/manager/reboot" },
+] as const;
+
 type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class LmClient {
@@ -29,6 +41,46 @@ export class LmClient {
     private fetchFn: FetchFn = (input, init) => fetch(input, init),
   ) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
+  }
+
+  /** never throws: a hung or refused server is simply down */
+  async ping(): Promise<Ping> {
+    try {
+      const res = await this.fetchFn(`${this.baseUrl}/api/lm/version-info`, {
+        signal: AbortSignal.timeout(PING_TIMEOUT_MS),
+      });
+      if (!res.ok) return { up: false };
+      const o = await readJson(res);
+      return { up: true, version: typeof o.version === "string" ? o.version : "unknown" };
+    } catch {
+      return { up: false };
+    }
+  }
+
+  /** asks ComfyUI-Manager to restart ComfyUI (core ComfyUI has no such route) */
+  async restartComfy(): Promise<string> {
+    for (const r of RESTART_ROUTES) {
+      let res: Response;
+      try {
+        res = await this.fetchFn(`${this.baseUrl}${r.path}`, {
+          method: r.method,
+          headers: r.method === "POST" ? { "Content-Type": "application/json" } : {},
+        });
+      } catch {
+        // the process died while answering: the restart is under way
+        return `${r.method} ${r.path}`;
+      }
+      if (res.status === 404 || res.status === 405) continue;
+      if (res.status === 403)
+        throw new Error(
+          "ComfyUI-Manager refused the restart: set its security_level to normal (ComfyUI-Manager config.ini)",
+        );
+      if (!res.ok) throw new Error(`restart: ${errorText(await readJson(res), res.status)}`);
+      return `${r.method} ${r.path}`;
+    }
+    throw new Error(
+      "no restart route: install the ComfyUI-Manager custom node to restart from here",
+    );
   }
 
   async version(): Promise<string> {
