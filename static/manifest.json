@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LoRA Manager Free",
   "description": "See if a Civitai model is in your LoRA Manager library, and download it into the folder you pick.",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
   "host_permissions": ["http://*/*", "https://*/*"],
