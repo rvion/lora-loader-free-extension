@@ -32,5 +32,8 @@ await cp(`${root}static`, dist, { recursive: true });
 // package.json is the one version source: shipkit bump writes it, chrome reads the manifest
 const pkg = (await Bun.file(`${root}package.json`).json()) as { version: string };
 const manifest = (await Bun.file(`${dist}/manifest.json`).json()) as Record<string, unknown>;
-await Bun.write(`${dist}/manifest.json`, JSON.stringify({ ...manifest, version: pkg.version }, null, 2));
+await Bun.write(
+  `${dist}/manifest.json`,
+  JSON.stringify({ ...manifest, version: pkg.version }, null, 2),
+);
 console.log(`built ${result.outputs.length} files → ${dist}`);
