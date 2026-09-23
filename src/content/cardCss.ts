@@ -31,6 +31,10 @@ button:disabled { opacity: .5; cursor: default; }
 button.primary { flex: 1; background: #1971c2; border-color: #1971c2; font-weight: 600; }
 button.icon { padding: 0 8px; background: none; border: none; font-size: 16px; color: #909296; }
 button.link { background: none; border: none; color: #4dabf7; padding: 0 0 0 6px; }
+.server { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #373a40; }
+.row { display: flex; gap: 6px; }
+.row input { flex: 1; min-width: 0; }
+button.icon.on { color: #4dabf7; }
 .pill { display: flex; align-items: center; gap: 6px; border-radius: 999px; box-shadow: 0 4px 12px rgba(0,0,0,.4); }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .dot.good { background: #51cf66; } .dot.none { background: #909296; }

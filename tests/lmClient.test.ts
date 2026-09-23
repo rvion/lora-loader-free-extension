@@ -23,6 +23,13 @@ test("base url accepts a bare host and drops trailing slashes", () => {
   expect(normalizeBaseUrl(" https://box.tail.ts.net/ ")).toBe("https://box.tail.ts.net");
 });
 
+test("base url accepts a bare lan ip and rejects garbage", () => {
+  expect(normalizeBaseUrl("192.168.1.20:8188")).toBe("http://192.168.1.20:8188");
+  expect(() => normalizeBaseUrl("http://")).toThrow();
+  expect(() => normalizeBaseUrl("")).toThrow();
+  expect(() => normalizeBaseUrl("ftp://box")).toThrow();
+});
+
 test("library status reads exists and model type", async () => {
   const lm = fakeLm({
     "/api/lm/check-model-exists": { body: { success: true, exists: true, modelType: "lora" } },

@@ -7,8 +7,9 @@ import {
   getMarked,
   getSettings,
   onMarkedChanged,
+  onSettingsChanged,
+  saveLmUrl,
   setMarked,
-  setSettings,
   type MarkedItem,
 } from "src/shared/storage.ts";
 import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
@@ -23,6 +24,7 @@ export class PopupSt {
   marked: MarkedItem[] = [];
   launched: Launched[] = [];
   isLaunching = false;
+  saveError: string | null = null;
 
   constructor() {
     this.test = new Query(() => send({ kind: "lmVersion", url: this.urlDraft }));
@@ -38,6 +40,7 @@ export class PopupSt {
       this.marked = marked;
     });
     onMarkedChanged((items) => this.setMarkedItems(items));
+    onSettingsChanged((s) => this.setSaved(s.lmUrl));
   }
 
   setMarkedItems(items: MarkedItem[]): void {
@@ -53,13 +56,23 @@ export class PopupSt {
   }
 
   async saveUrl(): Promise<void> {
-    const url = this.urlDraft.trim();
-    await setSettings({ lmUrl: url });
-    runInAction(() => {
-      this.savedUrl = url;
-      this.urlDraft = url;
-    });
+    this.saveError = null;
+    try {
+      const url = await saveLmUrl(this.urlDraft);
+      runInAction(() => {
+        this.savedUrl = url;
+        this.urlDraft = url;
+      });
+    } catch (e) {
+      runInAction(() => (this.saveError = errorMessage(e)));
+      return;
+    }
     await this.test.run();
+  }
+
+  setSaved(url: string): void {
+    this.savedUrl = url;
+    this.urlDraft = url;
   }
 
   async unmark(versionId: number): Promise<void> {

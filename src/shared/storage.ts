@@ -1,4 +1,5 @@
 import type { LmPrefix } from "src/shared/civitai.ts";
+import { normalizeBaseUrl } from "src/shared/lmClient.ts";
 
 export const DEFAULT_LM_URL = "http://127.0.0.1:8188";
 
@@ -21,8 +22,26 @@ export async function getSettings(): Promise<Settings> {
   return { lmUrl: s?.lmUrl ?? DEFAULT_LM_URL };
 }
 
-export async function setSettings(p: Settings): Promise<void> {
-  await chrome.storage.sync.set({ settings: p });
+/** accepts a host, ip:port or full url, stores the normalized origin, throws on garbage */
+export async function saveLmUrl(raw: string): Promise<string> {
+  let lmUrl: string;
+  try {
+    lmUrl = normalizeBaseUrl(raw);
+  } catch {
+    throw new Error(`not a valid address: ${raw}`);
+  }
+  await chrome.storage.sync.set({ settings: { lmUrl } satisfies Settings });
+  return lmUrl;
+}
+
+export function onSettingsChanged(cb: (s: Settings) => void): () => void {
+  const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+    if (area !== "sync" || changes.settings == null) return;
+    const s = changes.settings.newValue as Partial<Settings> | undefined;
+    cb({ lmUrl: s?.lmUrl ?? DEFAULT_LM_URL });
+  };
+  chrome.storage.onChanged.addListener(listener);
+  return () => chrome.storage.onChanged.removeListener(listener);
 }
 
 export async function getLastFolder(prefix: LmPrefix): Promise<FolderPick | null> {

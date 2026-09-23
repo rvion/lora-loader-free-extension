@@ -15,11 +15,45 @@ export const Card = obs(function Card(p: { st: CardSt }) {
     <div className="card">
       <header>
         <span className="brand">LoRA Manager</span>
-        <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
-          –
-        </button>
+        <span>
+          <button
+            className={st.server.isEditing ? "icon on" : "icon"}
+            onClick={() => st.server.toggleEditing()}
+            title="Server address"
+          >
+            ⚙
+          </button>
+          <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
+            –
+          </button>
+        </span>
       </header>
+      {st.server.isOpen && <ServerField st={st} />}
       <Body st={st} />
+    </div>
+  );
+});
+
+const ServerField = obs(function ServerField(p: { st: CardSt }) {
+  const sv = p.st.server;
+  return (
+    <div className="server">
+      <label>
+        ComfyUI / LoRA Manager address
+        <span className="row">
+          <input
+            value={sv.draft}
+            placeholder="127.0.0.1:8188"
+            spellCheck={false}
+            onChange={(e) => sv.setDraft(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void sv.save();
+            }}
+          />
+          <button onClick={() => void sv.save()}>Save</button>
+        </span>
+      </label>
+      {sv.saveError != null && <p className="error">{sv.saveError}</p>}
     </div>
   );
 });

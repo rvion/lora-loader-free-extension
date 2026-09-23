@@ -25,13 +25,19 @@ const Connection = obs(function Connection(p: { st: PopupSt }) {
   return (
     <section>
       <label>
-        LoRA Manager URL (ComfyUI)
+        ComfyUI / LoRA Manager address
         <input
           value={st.urlDraft}
+          placeholder="127.0.0.1:8188"
           onChange={(e) => st.setUrlDraft(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void st.saveUrl();
+          }}
           spellCheck={false}
         />
       </label>
+      <p className="muted">Host, IP or full URL, e.g. 192.168.1.20:8188</p>
+      {st.saveError != null && <p className="error">{st.saveError}</p>}
       <div className="row">
         <button onClick={() => void t.run()} disabled={t.isRunning}>
           Test

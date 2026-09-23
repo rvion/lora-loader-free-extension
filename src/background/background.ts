@@ -95,7 +95,7 @@ async function dispatch(req: Request): Promise<Reply<Kind>> {
 
 function networkHint(error: string): string {
   return error === "Failed to fetch"
-    ? "cannot reach LoRA Manager (is ComfyUI running, and is the URL in the popup right?)"
+    ? "cannot reach LoRA Manager: is ComfyUI running, and is the address right?"
     : error;
 }
 

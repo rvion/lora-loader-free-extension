@@ -100,8 +100,11 @@ export class LmClient {
 }
 
 export function normalizeBaseUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  const url = new URL(/^https?:\/\//.test(trimmed) ? trimmed : `http://${trimmed}`);
+  const trimmed = raw.trim();
+  // scheme detection runs before any slash trimming: "http://" must stay hostless and throw
+  const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`);
+  if (url.protocol !== "http:" && url.protocol !== "https:")
+    throw new Error(`unsupported scheme ${url.protocol}`);
   return url.origin;
 }
 

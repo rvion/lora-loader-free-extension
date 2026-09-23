@@ -14,7 +14,10 @@ import { Query } from "src/shared/Query.ts";
 import {
   getLastFolder,
   getMarked,
+  getSettings,
   onMarkedChanged,
+  onSettingsChanged,
+  saveLmUrl,
   setLastFolder,
   setMarked,
   type FolderPick,
@@ -29,10 +32,12 @@ export class CardSt {
   folder: FolderSvc;
   download: DownloadSvc;
   marks: MarkSvc;
+  server: ServerSvc;
   collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
+    this.server = new ServerSvc(this);
     this.library = new LibrarySvc(this);
     this.folder = new FolderSvc(this);
     this.download = new DownloadSvc(this);
@@ -43,6 +48,7 @@ export class CardSt {
       folder: false,
       download: false,
       marks: false,
+      server: false,
     });
   }
 
@@ -69,6 +75,58 @@ export class CardSt {
       this.folder.load(prefix),
       this.download.resume(m.id, v.id),
     ]);
+  }
+}
+
+/** the LoRA Manager address, editable from the card, shared with the popup through storage */
+export class ServerSvc {
+  url = "";
+  draft = "";
+  isEditing = false;
+  saveError: string | null = null;
+
+  constructor(private st: CardSt) {
+    makeAutoObservable<ServerSvc, "st">(this, { st: false });
+    void getSettings().then((s) => this.applySaved(s.lmUrl, false));
+    onSettingsChanged((s) => this.applySaved(s.lmUrl, true));
+  }
+
+  applySaved(url: string, recheck: boolean): void {
+    const changed = url !== this.url;
+    this.url = url;
+    this.draft = url;
+    if (changed && recheck) {
+      this.isEditing = false;
+      void this.st.refreshForVersion();
+    }
+  }
+
+  toggleEditing(): void {
+    this.isEditing = !this.isEditing;
+    this.draft = this.url;
+    this.saveError = null;
+  }
+
+  setDraft(v: string): void {
+    this.draft = v;
+  }
+
+  /** open while editing, and on its own whenever LM cannot be reached */
+  get isOpen(): boolean {
+    return (
+      this.isEditing || this.st.library.status.error != null || this.st.folder.choices.error != null
+    );
+  }
+
+  async save(): Promise<void> {
+    this.saveError = null;
+    try {
+      const saved = await saveLmUrl(this.draft);
+      runInAction(() => (this.draft = saved));
+      if (saved === this.url) void this.st.refreshForVersion();
+    } catch (e) {
+      runInAction(() => (this.saveError = errorMessage(e)));
+    }
   }
 }
 

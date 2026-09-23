@@ -7,7 +7,11 @@ Appears bottom right on `https://civitai.com/models/<id>` and
 (else the model's first version). Follows SPA navigation: switching version
 or model updates the card without a reload. Collapsible to a small pill.
 
-Header: model name, version name, Civitai type.
+Header: model name, version name, Civitai type. A ⚙ button opens the
+server URL field (same setting as the popup: ComfyUI host, IP or full URL,
+e.g. `192.168.1.20:8188`). The field also opens by itself whenever LoRA
+Manager is unreachable. Saving it, from the card or the popup, re-checks the
+card at once.
 
 Status line, one of:
 
