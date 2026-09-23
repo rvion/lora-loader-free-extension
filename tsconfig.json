@@ -24,6 +24,11 @@
       // every file is a module even with no import/export (standalone scripts)
       "moduleDetection": "force",
 
+      // browser extension: dom + chrome.* ambient, react 19 automatic jsx
+      "lib": ["ESNext", "DOM", "DOM.Iterable"],
+      "types": ["chrome", "bun"],
+      "jsx": "react-jsx",
+
       // the house TS standard is all five, always on (meta/rv-conventions):
       // strict alone leaves dead locals and fallthrough bugs in the codebase
       "strict": true,
@@ -42,5 +47,5 @@
    // skipLibCheck covers .d.ts only. The repo then fails on code its owner
    // cannot edit. List a root file BY NAME when it earns checking, the way
    // a vite repo lists vite.config.ts
-   "include": ["src", "scripts"]
+   "include": ["src", "scripts", "tests"]
 }

@@ -1,0 +1,140 @@
+import { configure } from "mobx";
+import { createRoot } from "react-dom/client";
+import { obs } from "rvlib-mobx";
+
+import { PopupSt, type Launched } from "src/popup/PopupSt.ts";
+import type { MarkedItem } from "src/shared/storage.ts";
+import type { DownloadState } from "src/shared/watchDownload.ts";
+
+configure({ enforceActions: "always" });
+
+const Popup = obs(function Popup(p: { st: PopupSt }) {
+  const st = p.st;
+  return (
+    <main>
+      <h1>LoRA Manager</h1>
+      <Connection st={st} />
+      <Marked st={st} />
+    </main>
+  );
+});
+
+const Connection = obs(function Connection(p: { st: PopupSt }) {
+  const st = p.st;
+  const t = st.test;
+  return (
+    <section>
+      <label>
+        LoRA Manager URL (ComfyUI)
+        <input
+          value={st.urlDraft}
+          onChange={(e) => st.setUrlDraft(e.currentTarget.value)}
+          spellCheck={false}
+        />
+      </label>
+      <div className="row">
+        <button onClick={() => void t.run()} disabled={t.isRunning}>
+          Test
+        </button>
+        {st.isDirty && (
+          <button className="primary" onClick={() => void st.saveUrl()}>
+            Save
+          </button>
+        )}
+        <span className="status">
+          {t.isRunning ? (
+            "Testing…"
+          ) : t.error != null ? (
+            <span className="error">{t.error.message}</span>
+          ) : t.result != null ? (
+            <span className="good">Connected, LoRA Manager {t.result}</span>
+          ) : null}
+        </span>
+      </div>
+    </section>
+  );
+});
+
+const Marked = obs(function Marked(p: { st: PopupSt }) {
+  const st = p.st;
+  return (
+    <section>
+      <h2>Marked ({st.marked.length})</h2>
+      {st.marked.length === 0 && st.launched.length === 0 && (
+        <p className="muted">Nothing marked. Use Mark on a Civitai model page.</p>
+      )}
+      <ul>
+        {st.marked.map((i) => (
+          <MarkedRow key={i.versionId} st={st} item={i} />
+        ))}
+        {st.launched.map((l) => (
+          <LaunchedRow key={`l${l.item.versionId}`} row={l} />
+        ))}
+      </ul>
+      {st.marked.length > 0 && (
+        <button
+          className="primary wide"
+          disabled={st.isLaunching}
+          onClick={() => void st.downloadAll()}
+        >
+          {st.isLaunching ? "Starting…" : `Download all (${st.marked.length})`}
+        </button>
+      )}
+    </section>
+  );
+});
+
+const MarkedRow = obs(function MarkedRow(p: { st: PopupSt; item: MarkedItem }) {
+  return (
+    <li>
+      <ItemText item={p.item} />
+      <button className="icon" title="Remove" onClick={() => void p.st.unmark(p.item.versionId)}>
+        ×
+      </button>
+    </li>
+  );
+});
+
+const LaunchedRow = obs(function LaunchedRow(p: { row: Launched }) {
+  return (
+    <li>
+      <ItemText item={p.row.item} />
+      <StateText state={p.row.state} />
+    </li>
+  );
+});
+
+function ItemText(p: { item: MarkedItem }) {
+  const i = p.item;
+  const where = [i.folder.root.split(/[\\/]/).pop() ?? i.folder.root, i.folder.sub]
+    .filter((s) => s !== "")
+    .join("/");
+  return (
+    <div className="item">
+      <div className="name">{i.modelName}</div>
+      <div className="muted">
+        {i.versionName} → {where}
+      </div>
+    </div>
+  );
+}
+
+function StateText(p: { state: DownloadState }) {
+  const s = p.state;
+  switch (s.kind) {
+    case "idle":
+      return null;
+    case "starting":
+      return <span className="muted">starting…</span>;
+    case "running":
+      return <span>{s.stage ?? `${Math.round(s.percent)}%`}</span>;
+    case "failed":
+      return <span className="error">{s.message}</span>;
+    case "done":
+      return <span className="good">✓</span>;
+  }
+}
+
+const rootEl = document.getElementById("root");
+if (rootEl == null) throw new Error("popup.html lacks #root");
+createRoot(rootEl).render(<Popup st={new PopupSt()} />);

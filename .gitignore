@@ -31,3 +31,4 @@ STATUS.full.md
 STATUS.full.md.lock
 .STATUS.full.md.tmp-*
 # <<< shipkit gitignore policy
+dist/

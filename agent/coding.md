@@ -19,6 +19,14 @@ always-loaded one, and route the rest by surface.
   `noUnusedParameters`, `noFallthroughCasesInSwitch`: all on, always.
 - No `as any`, no `@ts-ignore`. A cast that survives review is listed here
   with the reason it is safe.
+- Whitelisted casts:
+  - `handlers[req.kind] as (r: Request) => …` in `background.ts`: TS cannot
+    correlate a mapped handler table with a union key, the table type itself
+    guarantees each handler matches its kind.
+  - `as Record<string, unknown>` right after a `typeof x === 'object' && x != null`
+    check on parsed JSON: the check is the proof.
+  - `chrome.storage` reads cast to the stored shape: `storage.ts` is the only
+    writer of those keys.
 - Imports are absolute (`src/...`), never `../..` chains.
 
 ## Comments

@@ -15,9 +15,14 @@ description: Prove a change in THIS project actually works — drive the real fl
 ## This project
 - Full gate: `shipkit ci` — THE command, never the linter, the typechecker
   and the tests one at a time.
-- TODO, fill these in once the stack exists: the dev server command and its
-  port (check it is not already running: `curl -s localhost:PORT >/dev/null
-  && echo up`), and the live URL after deploy (curl 200 + drive the flow).
+- Build: `bun run build` → `dist/`. The owner loads it unpacked in Chrome and
+  playtests on a civitai.com model page. Never self verify the look.
+- LoRA Manager must be up: `curl -s localhost:8188/api/lm/version-info`.
+  Logic that talks to it is covered by `tests/lmClient.test.ts` with a fake
+  fetch. A live server is only for a real integration bug, sandboxed per
+  ComfyUI-Lora-Manager/AGENTS.md, and only with the owner's OK.
+- Background errors: chrome://extensions → the card → "service worker" →
+  console, lines prefixed `[lm-free]`.
 
 ## Browser verification (only when a browser is truly needed)
 Playwright with explicit `executablePath`, `deviceScaleFactor: 2`, localStorage
