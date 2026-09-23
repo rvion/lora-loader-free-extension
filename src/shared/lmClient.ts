@@ -5,8 +5,13 @@ export type LibraryStatus = { exists: false } | { exists: true; modelType: strin
 
 export type FolderChoices = { roots: string[]; folders: string[] };
 
+/** models present in the library, by civitai model id. absent ids are simply missing */
+export type LibraryBatch = Record<string, { modelType: string; versionCount: number }>;
+
 export type DownloadRequest = {
   downloadId: string;
+  /** a civitai file id, null lets LoRA Manager take the primary file */
+  fileId: number | null;
   modelId: number;
   versionId: number;
   root: string;
@@ -97,6 +102,24 @@ export class LmClient {
       : { exists: false };
   }
 
+  async libraryBatch(modelIds: number[]): Promise<LibraryBatch> {
+    const out: LibraryBatch = {};
+    if (modelIds.length === 0) return out;
+    const o = await this.getJson(`/api/lm/check-models-exist?modelIds=${modelIds.join(",")}`);
+    if (o.success !== true) throw new Error(`LoRA Manager: ${errorText(o)}`);
+    for (const r of Array.isArray(o.results) ? o.results : []) {
+      if (typeof r !== "object" || r == null) continue;
+      const row = r as Record<string, unknown>;
+      const versions = Array.isArray(row.versions) ? row.versions : [];
+      if (typeof row.modelId === "number" && versions.length > 0)
+        out[String(row.modelId)] = {
+          modelType: String(row.modelType ?? "model"),
+          versionCount: versions.length,
+        };
+    }
+    return out;
+  }
+
   async folderChoices(prefix: LmPrefix): Promise<FolderChoices> {
     const [r, f] = await Promise.all([
       this.getJson(`/api/lm/${prefix}/roots`),
@@ -117,6 +140,7 @@ export class LmClient {
         model_root: p.root,
         relative_path: p.sub,
         use_default_paths: false,
+        ...(p.fileId != null ? { file_params: { id: p.fileId } } : {}),
       }),
     });
     const o = await readJson(res);

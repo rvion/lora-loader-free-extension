@@ -54,6 +54,7 @@ test("folder choices drop the empty root entry", async () => {
 test("download posts root, subfolder and our download id", async () => {
   const lm = fakeLm({ "/api/lm/download-model": { body: { success: true } } });
   await lm.client.download({
+    fileId: null,
     downloadId: "d1",
     modelId: 1,
     versionId: 2,
@@ -70,12 +71,50 @@ test("download posts root, subfolder and our download id", async () => {
   });
 });
 
+test("a picked file is sent as file_params", async () => {
+  const lm = fakeLm({ "/api/lm/download-model": { body: { success: true } } });
+  await lm.client.download({
+    fileId: 42,
+    downloadId: "d",
+    modelId: 1,
+    versionId: 2,
+    root: "r",
+    sub: "",
+  });
+  expect(JSON.parse(String(lm.calls[0]?.init?.body)).file_params).toEqual({ id: 42 });
+});
+
+test("library batch keeps only models with versions in the library", async () => {
+  const lm = fakeLm({
+    "/api/lm/check-models-exist": {
+      body: {
+        success: true,
+        results: [
+          { modelId: 1, modelType: "lora", versions: [{}, {}] },
+          { modelId: 2, modelType: null, versions: [] },
+        ],
+      },
+    },
+  });
+  expect(await lm.client.libraryBatch([1, 2])).toEqual({
+    "1": { modelType: "lora", versionCount: 2 },
+  });
+  expect(lm.calls[0]?.url).toBe("http://127.0.0.1:8188/api/lm/check-models-exist?modelIds=1,2");
+});
+
 test("download failure carries the server error text", async () => {
   const lm = fakeLm({
     "/api/lm/download-model": { status: 401, body: { success: false, error: "early access" } },
   });
   await expect(
-    lm.client.download({ downloadId: "d", modelId: 1, versionId: 2, root: "r", sub: "" }),
+    lm.client.download({
+      fileId: null,
+      downloadId: "d",
+      modelId: 1,
+      versionId: 2,
+      root: "r",
+      sub: "",
+    }),
   ).rejects.toThrow("early access");
 });
 

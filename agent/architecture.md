@@ -51,6 +51,17 @@ One root per surface, per build/app-state-tree: `CardSt` (content) and
 `PopupSt` (popup), services hang off it, components hold no business state.
 `Query<T>` in `src/shared/Query.ts` is the one async primitive.
 
+## Badges
+
+`BadgeSvc` (on `CardSt`, so it runs on every civitai page) owns one
+MutationObserver, debounced 300 ms. Each pass: every `a[href*="/models/"]`
+holding an `img` or `video` → model id → cached status → badge present iff in
+library. Unknown ids go out in chunks of 100 (`libraryBatch`). The badge is a
+plain absolutely positioned span with inline styles (it lives in civitai's
+DOM, not the shadow root); civitai re-renders can drop it, and the next pass
+puts it back. `forget(modelId)` after a download, `forgetAll()` after a
+restart.
+
 ## Storage
 
 | key | area | shape |

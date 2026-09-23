@@ -14,6 +14,8 @@ export type MarkedItem = {
   versionName: string;
   prefix: LmPrefix;
   folder: FolderPick;
+  /** absent on items marked before file picking existed */
+  file?: { id: number; label: string } | null;
 };
 
 export async function getSettings(): Promise<Settings> {

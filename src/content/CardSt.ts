@@ -2,14 +2,19 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import {
   fetchCivitaiModel,
+  fileLabel,
   lmPrefixForCivitaiType,
   parseCivitaiModelUrl,
+  weightFiles,
+  type CivitaiFile,
   type CivitaiModel,
   type CivitaiPageRef,
+  type CivitaiVersion,
   type LmPrefix,
 } from "src/shared/civitai.ts";
 import type { FolderChoices, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
+import { BadgeSvc } from "src/content/BadgeSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
@@ -35,15 +40,22 @@ export class CardSt {
   marks: MarkSvc;
   server: ServerSvc;
   restart: RestartSt;
+  file: FileSvc;
+  badges: BadgeSvc;
   collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
     this.server = new ServerSvc(this);
+    this.file = new FileSvc(this);
+    this.badges = new BadgeSvc();
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
       ping: () => send({ kind: "ping" }),
-      onBack: () => void this.refreshForVersion(),
+      onBack: () => {
+        this.badges.forgetAll();
+        void this.refreshForVersion();
+      },
     });
     this.library = new LibrarySvc(this);
     this.folder = new FolderSvc(this);
@@ -57,6 +69,8 @@ export class CardSt {
       marks: false,
       server: false,
       restart: false,
+      file: false,
+      badges: false,
     });
   }
 
@@ -69,6 +83,7 @@ export class CardSt {
     const ref = parseCivitaiModelUrl(href);
     if (!this.page.setRef(ref)) return;
     this.download.reset();
+    this.file.reset();
     if (ref == null) return;
     void this.page.load().then(() => this.refreshForVersion());
   }
@@ -138,6 +153,37 @@ export class ServerSvc {
   }
 }
 
+/** which civitai file of the current version to download */
+export class FileSvc {
+  pickedId: number | null = null;
+
+  constructor(private st: CardSt) {
+    makeAutoObservable<FileSvc, "st">(this, { st: false });
+  }
+
+  reset(): void {
+    this.pickedId = null;
+  }
+
+  pick(id: number): void {
+    this.pickedId = id;
+  }
+
+  get files(): CivitaiFile[] {
+    const v = this.st.page.version;
+    return v == null ? [] : weightFiles(v);
+  }
+
+  /** the explicit pick, else the primary file (weightFiles sorts it first) */
+  get picked(): CivitaiFile | null {
+    return this.files.find((f) => f.id === this.pickedId) ?? this.files[0] ?? null;
+  }
+
+  label(f: CivitaiFile): string {
+    return fileLabel(f);
+  }
+}
+
 export class PageSvc {
   ref: CivitaiPageRef | null = null;
   model: Query<CivitaiModel>;
@@ -170,12 +216,18 @@ export class PageSvc {
     if (this.model.error != null) runInAction(() => (this.loadedModelId = null));
   }
 
-  get version(): { id: number; name: string } | null {
+  get version(): CivitaiVersion | null {
     const m = this.model.result;
     if (m == null || m.id !== this.ref?.modelId) return null;
     const wanted = this.ref.versionId;
     if (wanted == null) return m.versions[0] ?? null;
-    return m.versions.find((v) => v.id === wanted) ?? { id: wanted, name: `version ${wanted}` };
+    return (
+      m.versions.find((v) => v.id === wanted) ?? {
+        id: wanted,
+        name: `version ${wanted}`,
+        files: [],
+      }
+    );
   }
 
   get prefix(): LmPrefix | null {
@@ -277,7 +329,11 @@ export class DownloadSvc {
   setState(gen: number, s: DownloadState): void {
     if (gen !== this.generation) return;
     this.state = s;
-    if (s.kind === "done") void this.st.library.check();
+    if (s.kind === "done") {
+      const id = this.st.page.model.result?.id;
+      if (id != null) this.st.badges.forget(id);
+      void this.st.library.check();
+    }
   }
 
   async start(): Promise<void> {
@@ -290,7 +346,13 @@ export class DownloadSvc {
     try {
       const r = await send({
         kind: "startDownload",
-        target: { modelId: m.id, versionId: v.id, prefix, folder: this.st.folder.pick },
+        target: {
+          modelId: m.id,
+          versionId: v.id,
+          prefix,
+          folder: this.st.folder.pick,
+          fileId: this.st.file.picked?.id ?? null,
+        },
       });
       await this.st.marks.remove(v.id);
       this.watch(gen, m.id, v.id, r.downloadId);
@@ -359,9 +421,16 @@ export class MarkSvc {
               versionName: v.name,
               prefix,
               folder: this.st.folder.pick,
+              file: this.markedFile(),
             },
           ];
     await setMarked(next);
+  }
+
+  /** only an explicit choice among several files is worth keeping */
+  private markedFile(): { id: number; label: string } | null {
+    const f = this.st.file.picked;
+    return f != null && this.st.file.files.length > 1 ? { id: f.id, label: fileLabel(f) } : null;
   }
 
   async remove(versionId: number): Promise<void> {

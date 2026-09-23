@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-23
 
+- v1.0.0 tagged: the version the owner confirmed working live.
+- Listing badges (BadgeSvc: MutationObserver, id cache, batches of 100,
+  30 s backoff when LM is down) and the file variant picker (file_params
+  `{ id }`, Civitai weight file types mirrored from LM's constants).
+
 - Restart ComfyUI button (card ⚙ panel and popup) through ComfyUI-Manager's
   reboot route, newest route first. RestartSt then requires ComfyUI to go
   DOWN before it accepts UP, so a restart that never happened reads as a

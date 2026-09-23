@@ -26,6 +26,12 @@ Status line, one of:
 
 Controls (hidden when in library):
 
+- **File picker**: shown only when the version has more than one weight file
+  (Civitai file types `Model`, `Pruned Model`, `Negative`, `UNet`,
+  `Diffusion Model`, `Enhancement LoRA`). Each option reads
+  `fp16 · pruned · SafeTensor · 2.1 GB`. Default is Civitai's primary file.
+  The pick is sent as `file_params: { id }` and kept on a marked item.
+
 - **Folder picker**: a root select (from LoRA Manager's roots for that model
   type) and a subfolder field with suggestions from existing subfolders.
   Free text creates a new subfolder. The last choice is remembered per model
@@ -34,11 +40,23 @@ Controls (hidden when in library):
 - **Mark** / **Unmark**: adds or removes this version (with the picked
   folder) from the marked list.
 
+## Listing badges (every civitai page)
+
+Every model card on Civitai (a link to `/models/<id>` that holds an image or
+video: home, search, browse, creator pages, suggestions) gets a small green
+badge at its top left when that model is in the library: `✓ LM`, or
+`✓ LM ×2` when several of its versions are. Models not in the library get no
+badge. New cards (infinite scroll, SPA navigation) are badged as they
+appear, with one batched call per ~100 new ids. A finished download or a
+ComfyUI restart re-checks. LM unreachable → no badges, no error spam (the
+card already reports it).
+
 ## The popup
 
 - LoRA Manager URL, default `http://127.0.0.1:8188`, with a Test button that
   shows the LM version or the error.
-- Marked list: model name, version, target folder, remove button, and
+- Marked list: model name, version, file variant when one was picked, target
+  folder, remove button, and
   **Download all** (hands every item to LoRA Manager at once. The server
   runs 5 at a time and queues the rest. Each row shows its progress, and a
   row leaves the list once its version is in the library).

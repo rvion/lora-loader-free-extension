@@ -108,6 +108,7 @@ export class PopupSt {
           versionId: item.versionId,
           prefix: item.prefix,
           folder: item.folder,
+          fileId: item.file?.id ?? null,
         },
       });
       await this.unmark(item.versionId);

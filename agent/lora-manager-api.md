@@ -8,9 +8,10 @@ server, default `http://127.0.0.1:8188`.
 |---|---|---|
 | `GET /api/lm/version-info` | popup Test | `{ success, version, … }` |
 | `GET /api/lm/check-model-exists?modelId=&modelVersionId=` | card status | `{ success, exists, modelType }` |
+| `GET /api/lm/check-models-exist?modelIds=1,2,3` | listing badges | `{ success, results: [{ modelId, modelType, versions: [...] }] }`, `versions` empty when absent |
 | `GET /api/lm/<prefix>/roots` | root select | `{ success, roots: string[] }` |
 | `GET /api/lm/<prefix>/folders` | subfolder suggestions | `{ folders: string[] }` (relative, `""` is the root) |
-| `POST /api/lm/download-model` | download | body `{ model_id, model_version_id, model_root, relative_path, download_id }`, resolves at the END of the download |
+| `POST /api/lm/download-model` | download | body `{ model_id, model_version_id, model_root, relative_path, download_id, file_params? }`; `file_params: { id }` picks one Civitai file (`_resolve_target_file`), resolves at the END of the download |
 | `GET /api/lm/download-progress/<id>` | progress | `{ success, progress, status?, stage?, message? }`, 404 when unknown |
 
 `<prefix>` is `loras`, `checkpoints` or `embeddings`.
@@ -33,7 +34,7 @@ pings `/api/lm/version-info` (3 s timeout): down first, then up again.
 
 ## Civitai (public, no key, fetched from the content script, same origin)
 
-`GET /api/v1/models/<id>` → `{ name, type, modelVersions: [{ id, name }] }`.
+`GET /api/v1/models/<id>` → `{ name, type, modelVersions: [{ id, name, files: [{ id, name, type, sizeKB, primary, metadata: { fp, size, format } }] }] }`.
 Types mapped: `LORA`, `LoCon`, `DoRA` → `loras`; `Checkpoint` →
 `checkpoints`; `TextualInversion` → `embeddings`. Anything else is
 "unsupported".

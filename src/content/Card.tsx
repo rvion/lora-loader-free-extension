@@ -117,6 +117,7 @@ const Controls = obs(function Controls(p: { st: CardSt }) {
   const d = st.download.state;
   return (
     <>
+      <FilePicker st={st} />
       <FolderPicker st={st} />
       {d.kind === "running" && (
         <div className="progress">
@@ -138,6 +139,26 @@ const Controls = obs(function Controls(p: { st: CardSt }) {
         </button>
       </div>
     </>
+  );
+});
+
+const FilePicker = obs(function FilePicker(p: { st: CardSt }) {
+  const f = p.st.file;
+  if (f.files.length < 2) return null;
+  return (
+    <div className="folder">
+      <label>
+        File
+        <select value={f.picked?.id ?? ""} onChange={(e) => f.pick(Number(e.currentTarget.value))}>
+          {f.files.map((file) => (
+            <option key={file.id} value={file.id} title={file.name}>
+              {f.label(file)}
+              {file.primary ? " (default)" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
   );
 });
 

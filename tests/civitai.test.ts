@@ -1,9 +1,13 @@
 import { expect, test } from "bun:test";
 
 import {
+  fileLabel,
   lmPrefixForCivitaiType,
+  modelIdFromHref,
   parseCivitaiModel,
   parseCivitaiModelUrl,
+  weightFiles,
+  type CivitaiFile,
 } from "src/shared/civitai.ts";
 
 test("model page url with and without a version", () => {
@@ -46,6 +50,69 @@ test("model answer keeps id, name, type and versions", () => {
     type: "LORA",
     modelVersions: [{ id: 2, name: "v1" }, { bad: 1 }],
   });
-  expect(m).toEqual({ id: 1, name: "x", type: "LORA", versions: [{ id: 2, name: "v1" }] });
+  expect(m).toEqual({
+    id: 1,
+    name: "x",
+    type: "LORA",
+    versions: [{ id: 2, name: "v1", files: [] }],
+  });
   expect(() => parseCivitaiModel({ error: "nope" })).toThrow();
+});
+
+test("model card links of every shape give the model id", () => {
+  expect(modelIdFromHref("/models/123/some-slug?modelVersionId=9")).toBe(123);
+  expect(modelIdFromHref("https://civitai.com/models/77")).toBe(77);
+  expect(modelIdFromHref("/models/5#reviews")).toBe(5);
+  expect(modelIdFromHref("/models")).toBeNull();
+  expect(modelIdFromHref("/user/models/5")).toBeNull();
+  expect(modelIdFromHref("https://evil.com/models/5")).toBeNull();
+});
+
+const file = (p: Partial<CivitaiFile>): CivitaiFile => ({
+  id: 1,
+  name: "x.safetensors",
+  type: "Model",
+  sizeKB: null,
+  primary: false,
+  fp: null,
+  size: null,
+  format: null,
+  ...p,
+});
+
+test("weight files keep only weights, primary first", () => {
+  const files = weightFiles({
+    id: 1,
+    name: "v1",
+    files: [
+      file({ id: 1 }),
+      file({ id: 2, type: "Training Data" }),
+      file({ id: 3, type: "Pruned Model", primary: true }),
+    ],
+  });
+  expect(files.map((f) => f.id)).toEqual([3, 1]);
+});
+
+test("file labels read fp, size, format and file size", () => {
+  expect(
+    fileLabel(file({ fp: "fp16", size: "pruned", format: "SafeTensor", sizeKB: 2_202_010 })),
+  ).toBe("fp16 · pruned · SafeTensor · 2.1 GB");
+  expect(fileLabel(file({ type: "Pruned Model", sizeKB: 146_000 }))).toBe("Pruned Model · 143 MB");
+  expect(fileLabel(file({}))).toBe("x.safetensors");
+});
+
+test("model answer carries version files with their metadata", () => {
+  const m = parseCivitaiModel({
+    id: 1,
+    name: "x",
+    type: "LORA",
+    modelVersions: [
+      {
+        id: 2,
+        name: "v1",
+        files: [{ id: 9, name: "a", type: "Model", primary: true, metadata: { fp: "fp16" } }],
+      },
+    ],
+  });
+  expect(m.versions[0]?.files[0]).toMatchObject({ id: 9, primary: true, fp: "fp16", format: null });
 });

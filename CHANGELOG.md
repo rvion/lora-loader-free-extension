@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased (minor)
+
+- Green "✓ LM" badges on every Civitai model card whose model is in your
+  library, with a version count when you have several.
+- File picker on the card when a version has several weight files (fp16,
+  pruned, …). Marked items keep the pick.
+
 ## 1.0.0
 
 First working version.

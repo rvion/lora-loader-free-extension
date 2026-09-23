@@ -36,6 +36,7 @@ type Handlers = { [K in Kind]: (req: Request<K>) => Promise<Protocol[K]["res"]> 
 const handlers: Handlers = {
   lmVersion: async (req) => (await client(req.url)).version(),
   libraryStatus: async (req) => (await client()).libraryStatus(req.modelId, req.versionId),
+  libraryBatch: async (req) => (await client()).libraryBatch(req.modelIds),
   folderChoices: async (req) => (await client()).folderChoices(req.prefix),
   activeDownload: async (req) => (await getActive())[String(req.versionId)] ?? null,
   ping: async () => (await client()).ping(),
@@ -60,6 +61,7 @@ const handlers: Handlers = {
       versionId: t.versionId,
       root: t.folder.root,
       sub: t.folder.sub,
+      fileId: t.fileId,
     });
     const settled = done.then(
       () => ({ failed: false as const }),

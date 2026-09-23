@@ -121,7 +121,8 @@ function ItemText(p: { item: MarkedItem }) {
     <div className="item">
       <div className="name">{i.modelName}</div>
       <div className="muted">
-        {i.versionName} → {where}
+        {i.versionName}
+        {i.file != null ? ` (${i.file.label})` : ""} → {where}
       </div>
     </div>
   );
