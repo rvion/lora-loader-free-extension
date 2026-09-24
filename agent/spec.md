@@ -178,10 +178,14 @@ click, so civitai's card never navigates.
 
 Chips are **glass**: a see through dark body with thin white text so the
 illustration stays visible, 26px tall like the Rules and Focus buttons. The
-only thing that acts is a real button at the end of the chip: **[Get]**
-(install), **[Update]** (newer version), **[Retry]** (failed), **[Mark]** /
-**[Unmark]** (LoRA Manager down); the `[root] (subfolder)` tags open the
-target editor; the rest of the chip does nothing. Nothing blinks: a static
+chip starts with its one real button, which names the base model it acts
+on: **[Get Anima]** (install), **[Update Krea 2]** (newer version),
+**[Retry Anima]** (failed), **[Mark Anima]** / **[Unmark Anima]** (LoRA
+Manager down). Then the target reads as one path, `loras / anima/styles`:
+root and subfolder at the same size, each its own color, `/` between; a
+click on the root opens the target editor on the root select, a click on
+the subfolder opens it on the subfolder picker. The rest of the chip does
+nothing. Nothing blinks: a static
 dot says green = have, orange = downloading, red = failed; install chips
 have no dot, their button says it.
 

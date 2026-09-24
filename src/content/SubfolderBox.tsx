@@ -9,6 +9,8 @@ export function SubfolderBox(p: {
   folders: string[];
   onChange: (v: string) => void;
   onEnter?: () => void;
+  /** focus on mount: the list opens at once */
+  autoFocus?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -38,6 +40,7 @@ export function SubfolderBox(p: {
   return (
     <span className="combo">
       <input
+        autoFocus={p.autoFocus}
         value={p.value}
         placeholder="(root)"
         spellCheck={false}

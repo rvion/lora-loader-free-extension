@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Chip layout: the button first and named after the base model (Get Anima,
+  Update Krea 2, Retry, Mark / Unmark), then the target as one path
+  `loras / anima/styles` (same size, root orange, subfolder blue), each half
+  clickable; the editor focuses the half that was clicked (EditRequest.part).
+
 - Chips: 26px like the Rules and Focus buttons, one real [Get] / [Update] /
   [Retry] / [Mark] button as the only thing that acts, no blinking dot (it
   read as recording). The tooltip holds a live getter instead of a snapshot

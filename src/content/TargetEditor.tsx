@@ -49,6 +49,7 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
         ) : (
           <div className="target-row">
             <select
+              autoFocus={req.part === "root"}
               value={t.root}
               onChange={(e) => st.setRoot(e.currentTarget.value)}
               title={t.root}
@@ -62,6 +63,7 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
             </select>
             <span className="sep-inline">/</span>
             <SubfolderBox
+              autoFocus={req.part === "sub"}
               value={t.sub}
               folders={st.choices?.folders ?? []}
               onChange={(x) => st.setSub(x)}

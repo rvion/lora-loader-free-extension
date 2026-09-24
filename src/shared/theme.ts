@@ -31,14 +31,14 @@ export const CHIP_CSS = `
   align-items: flex-start; gap: 4px; max-width: calc(100% - 16px); }
 /* glass chips: the illustration shows through; one real button acts (agent/spec.md "listing cards") */
 .lmf-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
-  height: 26px; box-sizing: border-box; padding: 0 3px 0 9px; border-radius: 999px;
+  height: 26px; box-sizing: border-box; padding: 0 9px 0 3px; border-radius: 999px;
   font: 700 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
   cursor: default; user-select: none; white-space: nowrap; }
 .lmf-chip.lmf-hot, .lmf-chip.lmf-cool, .lmf-chip.lmf-danger, .lmf-chip.lmf-more {
   background: rgba(12, 12, 15, .38) !important; color: rgba(255,255,255,.92) !important;
   border: 1px solid rgba(255,255,255,.28) !important; text-shadow: 0 1px 2px rgba(0,0,0,.85); }
 .lmf-chip::after { display: none; }
-.lmf-chip.lmf-cool, .lmf-chip.lmf-busy, .lmf-chip.lmf-more { padding-right: 9px; }
+.lmf-chip.lmf-cool, .lmf-chip.lmf-busy, .lmf-chip.lmf-more { padding-left: 9px; }
 /* a static state dot, never blinking: have, downloading, failed; install chips have none */
 .lmf-chip.lmf-cool::before, .lmf-chip.lmf-busy::before, .lmf-chip.lmf-danger::before {
   content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; }
@@ -53,14 +53,13 @@ export const CHIP_CSS = `
   cursor: pointer; text-shadow: 0 1px 1px rgba(0,0,0,.35); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
 .lmf-get:hover { filter: brightness(1.15); }
 .lmf-chip.lmf-danger .lmf-get { background: #c92a2a; }
-/* the target: root and subfolder as two distinct, see through tags */
-.lmf-root { padding: 0 4px; border-radius: 3px; background: rgba(0,0,0,.35); font-size: 9px; letter-spacing: .05em;
-  text-transform: uppercase; flex: none; color: rgba(255,255,255,.8); }
-.lmf-sub { padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,.1); font-weight: 600; font-style: italic;
-  color: rgba(255,255,255,.85); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-
-.lmf-target { display: inline-flex; align-items: center; gap: 4px; min-width: 0; cursor: pointer; border-radius: 4px; }
-.lmf-target:hover { outline: 1px dashed rgba(255, 169, 77, .9); outline-offset: 1px; }
+/* the target reads as one path, "loras / anima/styles": same size, one color per half, each half clickable */
+.lmf-target { display: inline-flex; align-items: baseline; gap: 3px; min-width: 0; }
+.lmf-root, .lmf-sub { cursor: pointer; font-size: 12px; border-radius: 3px; padding: 0 1px; }
+.lmf-root { flex: none; color: #ffc078; font-weight: 800; }
+.lmf-sub { color: #a5d8ff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.lmf-slash { color: rgba(255,255,255,.5); font-weight: 400; }
+.lmf-root:hover, .lmf-sub:hover { text-decoration: underline; text-underline-offset: 2px; background: rgba(0,0,0,.35); }
 `;
 
 /** injected once into civitai's own document for the listing overlays */

@@ -62,6 +62,8 @@ export type EditRequest = {
   modelId: number;
   versionId: number;
   rect: { left: number; top: number; bottom: number };
+  /** which half of the path was clicked: the editor focuses that control */
+  part: "root" | "sub";
 };
 
 /** what the target editor feeds back: manual targets and file picks per version */
@@ -290,11 +292,13 @@ export class ListingSvc {
       const t = e.target instanceof Element ? e.target : null;
       const edit = t?.closest<HTMLElement>("[data-edit]");
       if (edit?.dataset.edit != null) {
-        const r = edit.getBoundingClientRect();
+        const clicked = t?.closest<HTMLElement>("[data-part]") ?? edit;
+        const r = clicked.getBoundingClientRect();
         this.deps.onEdit({
           modelId,
           versionId: Number(edit.dataset.edit),
           rect: { left: r.left, top: r.top, bottom: r.bottom },
+          part: clicked.dataset.part === "root" ? "root" : "sub",
         });
         return;
       }
@@ -517,9 +521,9 @@ export function chipsFor(p: ChipInput): Chip[] {
         const marked = p.isMarked?.(id) === true;
         return {
           cls: marked ? "lmf-cool" : "lmf-hot",
-          text: `${marked ? "★ " : ""}${baseName(g)}`,
+          text: marked ? "★ marked" : "",
           act: { kind: marked ? "unmark" : "mark", versionId: id },
-          actLabel: marked ? "Unmark" : "Mark",
+          actLabel: `${marked ? "Unmark" : "Mark"} ${baseName(g)}`,
           ...(t != null ? { target: t, editVersion: id } : {}),
         };
       });
@@ -560,7 +564,7 @@ export function chipsFor(p: ChipInput): Chip[] {
     const job = p.jobs.get(id);
     if (job != null && job.kind !== "idle" && job.kind !== "done") {
       if (job.kind === "failed")
-        return { cls: "lmf-danger", text: `${name} failed`, act: install, actLabel: "Retry" };
+        return { cls: "lmf-danger", text: "failed", act: install, actLabel: `Retry ${name}` };
       const progress = job.kind === "starting" ? "…" : (job.stage ?? `${Math.round(job.percent)}%`);
       return { cls: "lmf-hot lmf-busy", text: `${name} ${progress}` };
     }
@@ -569,9 +573,9 @@ export function chipsFor(p: ChipInput): Chip[] {
     const newer = hasNewer(g);
     const chip: Chip = {
       cls: "lmf-hot",
-      text: newer ? `${name} · newer ${g.latest.name}` : name,
+      text: newer ? `→ ${g.latest.name}` : "",
       act: install,
-      actLabel: newer ? "Update" : "Get",
+      actLabel: `${newer ? "Update" : "Get"} ${name}`,
     };
     return t != null ? { ...chip, target: t, editVersion: id } : chip;
   });
@@ -592,6 +596,14 @@ export function parseAct(raw: string): ChipAct {
 function chipEl(c: Chip): HTMLElement {
   const el = document.createElement("span");
   el.className = `lmf-chip ${c.cls}`;
+  if (c.act != null) {
+    const b = document.createElement("span");
+    b.className = "lmf-get";
+    b.setAttribute("role", "button");
+    b.dataset.act = actKey(c.act);
+    b.textContent = c.actLabel ?? "Get";
+    el.append(b);
+  }
   if (c.text !== "") {
     const label = document.createElement("span");
     label.className = "lmf-label";
@@ -602,25 +614,29 @@ function chipEl(c: Chip): HTMLElement {
     const target = document.createElement("span");
     target.className = "lmf-target";
     if (c.editVersion != null) target.dataset.edit = String(c.editVersion);
-    target.title = "Change where this one goes";
-    const root = document.createElement("span");
-    root.className = "lmf-root";
-    root.textContent = c.target.rootLabel;
-    const sub = document.createElement("span");
-    sub.className = "lmf-sub";
-    sub.textContent = `${c.target.manual === true ? "✎ " : ""}${c.target.sub !== "" ? c.target.sub : "(root)"}`;
-    target.append(root, sub);
+    const part = (name: "root" | "sub", text: string, title: string) => {
+      const x = document.createElement("span");
+      x.className = name === "root" ? "lmf-root" : "lmf-sub";
+      x.dataset.part = name;
+      x.title = title;
+      x.textContent = text;
+      return x;
+    };
+    const slash = document.createElement("span");
+    slash.className = "lmf-slash";
+    slash.textContent = "/";
+    target.append(
+      part("root", c.target.rootLabel, "Change the model root"),
+      slash,
+      part("sub", subText(c.target), "Change the subfolder"),
+    );
     el.append(target);
   }
-  if (c.act != null) {
-    const b = document.createElement("span");
-    b.className = "lmf-get";
-    b.setAttribute("role", "button");
-    b.dataset.act = actKey(c.act);
-    b.textContent = c.actLabel ?? "Get";
-    el.append(b);
-  }
   return el;
+}
+
+export function subText(t: Target): string {
+  return `${t.manual === true ? "✎ " : ""}${t.sub !== "" ? t.sub : "(root)"}`;
 }
 
 export type TipInput = {

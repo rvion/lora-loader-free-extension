@@ -66,10 +66,12 @@ test("no chip before LM answers; stand ins before civitai answers", () => {
 
 test("one chip per base model says exactly which one you have", () => {
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target });
-  expect(chips.map((c) => [c.text, c.act?.versionId ?? "-", c.target?.sub ?? "-"])).toEqual([
+  expect(
+    chips.map((c) => [c.actLabel ?? c.text, c.act?.versionId ?? "-", c.target?.sub ?? "-"]),
+  ).toEqual([
     ["✓ Krea 2", "-", "-"],
-    ["Anima", 11, "anima/styles"],
-    ["Illustrious", 12, "illustrious/styles"],
+    ["Get Anima", 11, "anima/styles"],
+    ["Get Illustrious", 12, "illustrious/styles"],
   ]);
 });
 
@@ -78,9 +80,9 @@ test("a later version of a base you have is flagged newer and installs that one"
   expect(chipsFor({ presence: have(20), remote: m, jobs: noJobs, target })).toEqual([
     {
       cls: "lmf-hot",
-      text: "Krea 2 · newer v21",
+      text: "→ v21",
       act: { kind: "install", versionId: 21 },
-      actLabel: "Update",
+      actLabel: "Update Krea 2",
       target: { root: "/m/loras", rootLabel: "loras", sub: "krea 2/styles" },
       editVersion: 21,
     },
@@ -151,7 +153,7 @@ test("page stats: matches of the draft, and the tags and bases seen, most freque
 test("focus hides install chips of other bases, never what you have", () => {
   const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target, focus });
-  expect(chips.map((c) => c.text)).toEqual(["✓ Krea 2", "Illustrious"]);
+  expect(chips.map((c) => c.actLabel ?? c.text)).toEqual(["✓ Krea 2", "Get Illustrious"]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target, focus })).toEqual([]);
 });
 
@@ -164,10 +166,10 @@ test("lm down on a model page: every base becomes a mark chip, marked ones unmar
     mode: "mark",
     isMarked: (v) => v === 11,
   });
-  expect(chips.map((c) => [c.text, c.actLabel])).toEqual([
-    ["Krea 2", "Mark"],
-    ["★ Anima", "Unmark"],
-    ["Illustrious", "Mark"],
+  expect(chips.map((c) => [c.actLabel, c.text])).toEqual([
+    ["Mark Krea 2", ""],
+    ["Unmark Anima", "★ marked"],
+    ["Mark Illustrious", ""],
   ]);
 });
 

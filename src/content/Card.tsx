@@ -1,8 +1,9 @@
 import { obs } from "rvlib-mobx";
 import { useRef } from "react";
+import type React from "react";
 
 import type { CardSt } from "src/content/CardSt.ts";
-import type { Chip } from "src/content/ListingSvc.ts";
+import { subText, type Chip } from "src/content/ListingSvc.ts";
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
 import { usePopoverDismiss } from "src/content/popover.ts";
 import { FocusButton, RulesButton } from "src/content/RulesUi.tsx";
@@ -88,9 +89,9 @@ const ModelChips = obs(function ModelChips(p: { st: CardSt }) {
           key={i}
           chip={c}
           onAct={() => c.act != null && void st.listing.run(m.id, c.act)}
-          onEdit={(rect) =>
+          onEdit={(rect, part) =>
             c.editVersion != null &&
-            void st.edit.open({ modelId: m.id, versionId: c.editVersion, rect })
+            void st.edit.open({ modelId: m.id, versionId: c.editVersion, rect, part })
           }
           onHover={(el) => st.listing.showTip(el, m.id)}
         />
@@ -103,33 +104,32 @@ const ModelChips = obs(function ModelChips(p: { st: CardSt }) {
 function ChipView(p: {
   chip: Chip;
   onAct: () => void;
-  onEdit: (rect: { left: number; top: number; bottom: number }) => void;
+  onEdit: (rect: { left: number; top: number; bottom: number }, part: "root" | "sub") => void;
   onHover: (el: HTMLElement) => void;
 }) {
   const c = p.chip;
+  const edit = (part: "root" | "sub") => (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    p.onEdit({ left: r.left, top: r.top, bottom: r.bottom }, part);
+  };
   return (
     <span className={`lmf-chip ${c.cls}`} onPointerEnter={(e) => p.onHover(e.currentTarget)}>
-      {c.text !== "" && <span className="lmf-label">{c.text}</span>}
-      {c.target != null && (
-        <span
-          className="lmf-target"
-          title="Change where this one goes"
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            p.onEdit({ left: r.left, top: r.top, bottom: r.bottom });
-          }}
-        >
-          <span className="lmf-root">{c.target.rootLabel}</span>
-          <span className="lmf-sub">
-            {c.target.manual === true ? "✎ " : ""}
-            {c.target.sub !== "" ? c.target.sub : "(root)"}
-          </span>
-        </span>
-      )}
       {c.act != null && (
         <button className="lmf-get" onClick={p.onAct}>
           {c.actLabel ?? "Get"}
         </button>
+      )}
+      {c.text !== "" && <span className="lmf-label">{c.text}</span>}
+      {c.target != null && (
+        <span className="lmf-target">
+          <span className="lmf-root" title="Change the model root" onClick={edit("root")}>
+            {c.target.rootLabel}
+          </span>
+          <span className="lmf-slash">/</span>
+          <span className="lmf-sub" title="Change the subfolder" onClick={edit("sub")}>
+            {subText(c.target)}
+          </span>
+        </span>
       )}
     </span>
   );
