@@ -9,21 +9,22 @@ ${GLOW_CSS}
 :host([data-mode="floating"]) .wrap { position: fixed; right: 18px; bottom: 18px; }
 :host([data-mode="custom"]) .wrap { position: fixed; }
 /* docked: a full width strip under civitai's header, one wrapping row */
-:host([data-mode="docked"]) .wrap { position: relative; padding: 4px 8px; background: #141517;
-  border-bottom: 1px solid #373a40; }
-:host([data-mode="docked"]) .card { width: 100%; display: flex; flex-wrap: wrap; align-items: center;
-  gap: 4px 12px; padding: 5px 10px; }
+:host([data-mode="docked"]) .wrap { position: relative; display: flex; justify-content: center;
+  padding: 4px 12px; background: #141517; border-bottom: 1px solid #373a40; }
+:host([data-mode="docked"]) .card { width: auto; max-width: 100%; display: flex; flex-wrap: wrap;
+  align-items: center; gap: 4px 10px; padding: 4px 10px; }
 :host([data-mode="docked"]) .card > header { margin: 0; gap: 6px; }
 :host([data-mode="docked"]) .card > .title { max-width: 280px; }
 :host([data-mode="docked"]) .card > .sub { margin: 0; }
 :host([data-mode="docked"]) .card > p { margin: 0; }
-:host([data-mode="docked"]) .card > .folder { display: flex; align-items: flex-end; gap: 8px; margin: 0; }
+:host([data-mode="docked"]) .card > .folder { display: flex; align-items: center; gap: 6px; margin: 0; }
+:host([data-mode="docked"]) .lbl { display: none; }
 :host([data-mode="docked"]) .card > .folder select { width: 200px; }
 :host([data-mode="docked"]) .card > .folder .combo { width: 200px; }
 :host([data-mode="docked"]) .card > .folder .rule { align-self: center; }
 :host([data-mode="docked"]) .card > .progress { flex: 1 1 160px; margin: 0; }
-:host([data-mode="docked"]) .card > .actions { margin: 0 0 0 auto; }
-:host([data-mode="docked"]) .card > .actions .primary { flex: none; min-width: 120px; }
+:host([data-mode="docked"]) .card > .actions { margin: 0; }
+:host([data-mode="docked"]) .card > .actions .primary { flex: none; min-width: 100px; }
 :host([data-mode="docked"]) .card > .where { max-width: 520px; }
 :host([data-mode="docked"]) .card > .server, :host([data-mode="docked"]) .card > .docknote { flex-basis: 100%; }
 header { cursor: grab; touch-action: none; user-select: none; }
@@ -99,6 +100,11 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .grip { cursor: grab; touch-action: none; user-select: none; font-size: 16px; color: #ffa94d; padding: 0 2px; }
 .grip:active { cursor: grabbing; }
 .docknote { margin: 4px 0; font-size: 12px; flex-basis: 100%; }
+/* the "/" between root and subfolder only reads right on one row */
+.sep { display: none; color: #adb5bd; }
+:host([data-mode="docked"]) .sep { display: inline; }
+/* inside a glowing frame the frame is enough: buttons keep the gradient, lose the halo */
+.card .lmf-hot::after, .card .lmf-cool::after, .tagbar .lmf-hot::after, .tagbar .lmf-cool::after { display: none; }
 /* subfolder combobox */
 .combo { position: relative; display: inline-block; width: 100%; }
 .combo input { padding-right: 38px; }

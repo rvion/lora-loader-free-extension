@@ -180,7 +180,7 @@ const FilePicker = obs(function FilePicker(p: { st: CardSt }) {
   return (
     <div className="folder">
       <label>
-        File
+        <span className="lbl">File</span>
         <select value={f.picked?.id ?? ""} onChange={(e) => f.pick(Number(e.currentTarget.value))}>
           {f.files.map((file) => (
             <option key={file.id} value={file.id} title={file.name}>
@@ -225,7 +225,7 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
   return (
     <div className="folder">
       <label>
-        Root
+        <span className="lbl">Root</span>
         <select
           value={f.pick.root}
           onChange={(e) => f.setRoot(e.currentTarget.value)}
@@ -238,8 +238,9 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
           ))}
         </select>
       </label>
+      <span className="sep">/</span>
       <label>
-        Subfolder
+        <span className="lbl">Subfolder</span>
         <SubfolderBox
           value={f.pick.sub}
           folders={c.result?.folders ?? []}

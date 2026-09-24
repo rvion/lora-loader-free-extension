@@ -4,8 +4,9 @@
 
 Placement: see "Dock and free mode" below. Its dock is a full width strip
 right under civitai's header (the same spot as the tag bar, which never
-shows on a model page), laid out in one wrapping row: title, status, file,
-folder, actions. It stays when the window shrinks, mobile included.
+shows on a model page): one compact row centered like the tag bar, title,
+status, file, `[root] / [subfolder]` without field labels, then Download
+and Mark right after them. It stays when the window shrinks, mobile included.
 Floating default: bottom right, as a vertical card.
 
 Appears on `https://civitai.com/models/<id>` and
@@ -79,7 +80,9 @@ the next pass. No setting: always on.
 
 Civitai is visually loud, so everything the extension adds stands out, kept
 compact (tight padding, 1.25 line height, a thin 2px frame, a soft halo that
-pulses between 20% and 70%). The card's label is a small "LM" badge:
+pulses between 20% and 70%). Only the frames of the card and tag bar and
+the listing chips glow: buttons inside a frame keep their gradient but no
+halo. The card's label is a small "LM" badge:
 - actionable things (⬇ Install, Download, the card frame, the tag bar): a
   red → orange → yellow gradient, white bold text, and a halo that pulses
   slowly;
