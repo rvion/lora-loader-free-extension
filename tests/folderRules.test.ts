@@ -1,76 +1,60 @@
 import { expect, test } from "bun:test";
 
-import { parsePageTag } from "src/shared/civitai.ts";
 import { baseSlug, resolveFolder, withDraft, type ResolveInput } from "src/shared/folderRules.ts";
+import { emptyCond, type Rule } from "src/shared/rules.ts";
+
+const rule = (
+  id: string,
+  cond: Partial<Rule["cond"]>,
+  sub: string,
+  root: string | null = "/m/loras",
+): Rule => ({
+  id,
+  cond: { ...emptyCond(), ...cond },
+  root,
+  sub,
+});
 
 const base: ResolveInput = {
   roots: ["/m/loras", "/big/loras"],
-  modelTags: [],
-  pageTag: null,
+  model: { name: "PixieSprite HoMM 5", tags: ["sprite", "fantasy", "character"], prefix: "loras" },
+  baseModel: "Illustrious",
   rules: [],
-  last: { root: "/big/loras", sub: "misc" },
-  baseModel: null,
+  last: { root: "/big/loras", sub: "krea2/styles" },
 };
 
-test("no rule: last used folder", () => {
-  expect(resolveFolder(base)).toEqual({ pick: { root: "/big/loras", sub: "misc" }, via: null });
+test("no rule matches: last root, no subfolder (never a folder built for another model)", () => {
+  expect(resolveFolder(base)).toEqual({ pick: { root: "/big/loras", sub: "" }, via: null });
 });
 
-test("first rule in list order matching a model tag wins", () => {
+test("first matching rule in list order wins, {base} resolved", () => {
   const rules = [
-    { tag: "style", root: null, sub: "style" },
-    { tag: "concept", root: "/m/loras", sub: "concept" },
+    rule("a", { tags: ["style"] }, "{base}/styles"),
+    rule("b", { words: ["sprite"] }, "{base}/sprites"),
   ];
-  const r = resolveFolder({ ...base, modelTags: ["Concept", "style"], rules });
-  expect(r).toEqual({ pick: { root: "/big/loras", sub: "style" }, via: "style" });
-});
-
-test("on a tag page the page tag rule wins over list order", () => {
-  const rules = [
-    { tag: "style", root: null, sub: "style" },
-    { tag: "concept", root: "/m/loras", sub: "concept" },
-  ];
-  const r = resolveFolder({ ...base, modelTags: ["style", "concept"], pageTag: "concept", rules });
-  expect(r).toEqual({ pick: { root: "/m/loras", sub: "concept" }, via: "concept" });
+  const r = resolveFolder({ ...base, rules });
+  expect(r.pick).toEqual({ root: "/m/loras", sub: "illustrious/sprites" });
+  expect(r.via?.id).toBe("b");
 });
 
 test("a rule root foreign to this model type falls back, its subfolder still applies", () => {
-  const rules = [{ tag: "concept", root: "/m/loras", sub: "concept" }];
-  const r = resolveFolder({
-    ...base,
-    roots: ["/m/checkpoints"],
-    last: null,
-    modelTags: ["concept"],
-    rules,
-  });
-  expect(r).toEqual({ pick: { root: "/m/checkpoints", sub: "concept" }, via: "concept" });
+  const rules = [rule("a", { words: ["sprite"] }, "sprites")];
+  const r = resolveFolder({ ...base, roots: ["/m/checkpoints"], last: null, rules });
+  expect(r.pick).toEqual({ root: "/m/checkpoints", sub: "sprites" });
 });
 
-test("page tag comes from ?tag= on /models and from /tag/<name>", () => {
-  expect(parsePageTag("https://civitai.red/models?tag=concept")).toBe("concept");
-  expect(parsePageTag("https://civitai.com/tag/Anime%20Style")).toBe("anime style");
-  expect(parsePageTag("https://civitai.com/models/123?tag=concept")).toBeNull();
-  expect(parsePageTag("https://civitai.com/models")).toBeNull();
-});
-
-test("{base} in a rule becomes the folder safe base model", () => {
+test("{base} becomes the folder safe base model", () => {
   expect(baseSlug("Krea 2")).toBe("krea2");
   expect(baseSlug("Flux.1 D")).toBe("flux1d");
   expect(baseSlug(null)).toBe("other");
-  const rules = [{ tag: "style", root: "/m/loras", sub: "{base}/styles" }];
-  expect(resolveFolder({ ...base, modelTags: ["style"], rules, baseModel: "Anima" }).pick.sub).toBe(
-    "anima/styles",
-  );
 });
 
-test("the tag bar draft replaces the saved rule for its tag", () => {
-  const saved = [
-    { tag: "style", root: "/m/loras", sub: "old" },
-    { tag: "concept", root: null, sub: "c" },
-  ];
-  expect(withDraft(saved, { tag: "style", root: "/big/loras", sub: "{base}/styles" })).toEqual([
-    { tag: "style", root: "/big/loras", sub: "{base}/styles" },
-    { tag: "concept", root: null, sub: "c" },
+test("the draft goes first and replaces its saved self", () => {
+  const saved = [rule("a", { tags: ["style"] }, "old"), rule("b", { tags: ["x"] }, "b")];
+  const draft = rule("a", { tags: ["style"] }, "{base}/styles");
+  expect(withDraft(saved, draft).map((r) => [r.id, r.sub])).toEqual([
+    ["a", "{base}/styles"],
+    ["b", "b"],
   ]);
   expect(withDraft(saved, null)).toBe(saved);
 });

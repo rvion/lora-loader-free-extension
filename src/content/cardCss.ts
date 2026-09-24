@@ -137,6 +137,46 @@ button.basebtn { font-size: 11px; font-weight: 800; color: #ffa94d; border: 1px 
 .tag { margin-left: 6px; font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; }
 .have-tag { background: #2b8a3e; color: #fff; }
 .newer-tag { background: #e8590c; color: #fff; }
+/* rules: strip, button, popover (agent/spec.md "rules") */
+.here { font-size: 12px; color: #ced4da; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 520px; }
+.here b { color: #ffa94d; }
+.rule.none { color: #adb5bd; font-weight: 600; font-style: italic; }
+.rules-anchor { position: relative; display: inline-block; }
+.rules-btn { font-weight: 800; }
+.rules-btn.on { border-color: #ffa94d; color: #ffa94d; }
+.popover.rules-pop { left: 0; right: auto; width: min(620px, 94vw); max-height: 72vh; overflow-y: auto; }
+.tools .popover.rules-pop { left: auto; right: 0; }
+button.small { padding: 1px 8px; font-size: 12px; height: 22px; }
+button.small.on { border-color: #ffa94d; color: #ffa94d; }
+.rule-list { margin: 0 0 6px; padding: 0 0 0 22px; }
+.rule-list li { display: flex; align-items: center; gap: 8px; padding: 3px 4px; border-radius: 6px; }
+.rule-list li.on { background: #2c2e33; }
+.rule-cond { font-weight: 700; }
+.rule-target { color: #adb5bd; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rule-tools { display: inline-flex; flex: none; }
+.rule-editor { border-top: 1px solid #373a40; padding-top: 8px; display: grid; gap: 8px; }
+.editor-title { font-weight: 800; font-size: 12px; }
+.dirty { color: #ffa94d; font-weight: 600; }
+.cond-row, .target-row, .save-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.target-row select { width: 170px; } .target-row .combo { width: 220px; }
+.save-row { justify-content: flex-end; }
+.save-row .muted { margin-right: auto; font-size: 12px; }
+.kw { font-weight: 900; color: #ffa94d; font-size: 12px; }
+.cond { display: inline-flex; align-items: center; gap: 4px; padding: 1px 4px 1px 7px; border-radius: 999px;
+  background: #2c2e33; border: 1px solid #5c5f66; font-size: 12px; font-weight: 700; }
+.cond-field { font-size: 10px; text-transform: uppercase; color: #adb5bd; font-weight: 800; }
+.cond-bases { border-color: #74c0fc; } .cond-words { border-color: #b197fc; } .cond-tags { border-color: #ffa94d; }
+.cond-x { border: none; background: none; padding: 0 3px; font-size: 11px; color: #adb5bd; height: auto; }
+.addcond { display: grid; gap: 4px; flex-basis: 100%; padding: 6px; border: 1px dashed #5c5f66; border-radius: 6px; }
+.addcond .fields, .addcond .picks { display: flex; flex-wrap: wrap; gap: 4px; }
+.addcond input { width: 100%; }
+.rules-btn.focus-on { border-color: #74c0fc; color: #74c0fc; }
+.bar-buttons { display: inline-flex; gap: 6px; }
+.focus-field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 6px 0; }
+.focus-field .cond-field { width: 90px; flex: none; }
+.focus-field input { width: 180px; height: 22px; }
+.switch { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #f1f3f5; cursor: pointer; }
+.switch input { width: auto; }
 /* subfolder combobox */
 .combo { position: relative; display: inline-block; width: 100%; }
 .combo input { padding-right: 52px; cursor: pointer; }

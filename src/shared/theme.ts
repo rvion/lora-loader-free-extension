@@ -30,18 +30,31 @@ ${GLOW_CSS}
 /* below the badge row civitai draws along the top of each card: one chip per base model */
 .lmf-chips { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: flex; flex-direction: column;
   align-items: flex-start; gap: 4px; max-width: calc(100% - 16px); }
+/* glass chips: the illustration shows through; the color lives in a small dot (agent/spec.md "look") */
 .lmf-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
-  padding: 2px 9px; border-radius: 999px; font: 800 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
+  padding: 2px 8px 2px 7px; border-radius: 999px; font: 700 11px/15px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
   cursor: default; user-select: none; white-space: nowrap; }
+.lmf-chip.lmf-hot, .lmf-chip.lmf-cool, .lmf-chip.lmf-danger, .lmf-chip.lmf-more {
+  background: rgba(12, 12, 15, .38) !important; color: rgba(255,255,255,.92) !important;
+  border: 1px solid rgba(255,255,255,.28) !important; text-shadow: 0 1px 2px rgba(0,0,0,.85); }
+.lmf-chip::after { display: none; }
+.lmf-chip::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: #adb5bd; }
+.lmf-chip.lmf-hot::before { background: #ff1744; box-shadow: 0 0 6px 2px rgba(255, 23, 68, .9);
+  animation: lmf-dot 1.2s ease-in-out infinite; will-change: opacity; }
+.lmf-chip.lmf-busy::before { background: #ff9100; box-shadow: 0 0 6px 2px rgba(255, 145, 0, .8); }
+.lmf-chip.lmf-cool::before { background: #51cf66; box-shadow: 0 0 4px 1px rgba(81, 207, 102, .7); animation: none; }
+.lmf-chip.lmf-danger::before { background: #ff1744; animation: none; }
+.lmf-chip.lmf-more::before { display: none; }
+@keyframes lmf-dot { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .lmf-chip::before { animation: none !important; } }
 .lmf-chip[data-install] { cursor: pointer; }
-.lmf-chip[data-install]:hover { filter: brightness(1.12); }
+.lmf-chip[data-install]:hover { background: rgba(12, 12, 15, .85) !important; border-color: rgba(255, 145, 0, .8) !important; }
 .lmf-chip.lmf-busy { cursor: progress; }
-.lmf-chip.lmf-more { background: rgba(20,21,23,.85); color: #f1f3f5; border: 1px solid #5c5f66; }
-/* the target: root and subfolder as two distinct tags */
-.lmf-root { padding: 0 5px; border-radius: 4px; background: rgba(0,0,0,.45); font-size: 10px; letter-spacing: .04em;
-  text-transform: uppercase; flex: none; }
-.lmf-sub { padding: 0 5px; border-radius: 4px; background: rgba(255,255,255,.22); font-weight: 700; font-style: italic;
-  overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* the target: root and subfolder as two distinct, see through tags */
+.lmf-root { padding: 0 4px; border-radius: 3px; background: rgba(0,0,0,.35); font-size: 9px; letter-spacing: .05em;
+  text-transform: uppercase; flex: none; color: rgba(255,255,255,.8); }
+.lmf-sub { padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,.1); font-weight: 600; font-style: italic;
+  color: rgba(255,255,255,.85); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lmf-tip { position: fixed; z-index: 2147483600; max-width: 420px; padding: 7px 10px; border-radius: 8px; pointer-events: none;
   background: #1f2023; color: #f1f3f5; border: 1px solid #5c5f66; box-shadow: 0 10px 30px rgba(0,0,0,.65);
   font: 500 12px/1.4 system-ui, -apple-system, sans-serif; white-space: pre-wrap; word-break: break-all; }

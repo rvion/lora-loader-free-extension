@@ -1,7 +1,8 @@
 import { configure, reaction } from "mobx";
 import { createRoot } from "react-dom/client";
 
-import { CardShell, TagBar } from "src/content/Card.tsx";
+import { CardShell } from "src/content/Card.tsx";
+import { RulesStrip } from "src/content/RulesUi.tsx";
 import { CardSt } from "src/content/CardSt.ts";
 import {
   CARD_HOST_ID,
@@ -32,11 +33,11 @@ function mount(): void {
         hasPos: st.placement.pos != null,
       }),
     );
-  const tp = st.tag.placement;
+  const tp = st.rules.placement;
   const placeTag = () =>
     tp.setActual(
       placeHost(tag.host, {
-        visible: st.tag.pageTag != null,
+        visible: st.rules.stripVisible,
         dock: UNDER_HEADER_DOCK,
         free: tp.mode === "free",
         hasPos: tp.pos != null,
@@ -54,7 +55,7 @@ function mount(): void {
   reaction(() => `${tp.mode}|${tp.pos == null}`, placeTag);
 
   createRoot(card.mountPoint).render(<CardShell st={st} />);
-  createRoot(tag.mountPoint).render(<TagBar st={st} />);
+  createRoot(tag.mountPoint).render(<RulesStrip st={st.rules} focus={st.focus} />);
 }
 
 mount();

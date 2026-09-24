@@ -4,6 +4,7 @@ import { obs } from "rvlib-mobx";
 
 import { PopupSt, type Launched } from "src/popup/PopupSt.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
+import { summarizeCond } from "src/shared/rules.ts";
 import type { MarkedItem } from "src/shared/storage.ts";
 import { GLOW_CSS } from "src/shared/theme.ts";
 import type { DownloadState } from "src/shared/watchDownload.ts";
@@ -98,32 +99,29 @@ const Rules = obs(function Rules(p: { st: PopupSt }) {
   const st = p.st;
   return (
     <section>
-      <h2>Tag rules ({st.rules.length})</h2>
+      <h2>Rules ({st.rules.length})</h2>
       {st.rules.length === 0 && (
-        <p className="muted">No rule yet. Open a Civitai tag page (models?tag=…) to add one.</p>
+        <p className="muted">No rule yet. Use the Rules button on a Civitai page to add one.</p>
       )}
       <ul>
         {st.rules.map((r, i) => (
-          <li key={r.tag}>
+          <li key={r.id}>
             <div className="item">
-              <div className="name"># {r.tag}</div>
+              <div className="name">{summarizeCond(r.cond)}</div>
               <div className="muted">
-                →{" "}
-                {r.root != null
-                  ? (r.root.split(/[\\/]/).pop() ?? r.root)
-                  : "default root (update the rule to pick one)"}
-                {r.sub !== "" ? `/${r.sub}` : ""}
+                → {r.root != null ? (r.root.split(/[\\/]/).pop() ?? r.root) : "default root"}
+                {r.sub !== "" ? ` / ${r.sub}` : ""}
               </div>
             </div>
             <button
               className="icon"
               title="Higher priority"
               disabled={i === 0}
-              onClick={() => void st.moveRuleUp(r.tag)}
+              onClick={() => void st.moveRuleUp(r.id)}
             >
               ↑
             </button>
-            <button className="icon" title="Delete" onClick={() => void st.deleteRule(r.tag)}>
+            <button className="icon" title="Delete" onClick={() => void st.deleteRule(r.id)}>
               ×
             </button>
           </li>

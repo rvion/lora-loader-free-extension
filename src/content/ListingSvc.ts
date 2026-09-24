@@ -7,7 +7,6 @@ import {
   hasNewer,
   lmPrefixForCivitaiType,
   modelIdFromHref,
-  parsePageTag,
   weightFiles,
   type BaseGroup,
   type CivitaiModel,
@@ -15,16 +14,12 @@ import {
   type LmPrefix,
 } from "src/shared/civitai.ts";
 import { resolveFolder, withDraft } from "src/shared/folderRules.ts";
+import type { PageStats } from "src/content/RulesSvc.ts";
 import type { LibraryBatch } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
-import {
-  getLastFolder,
-  getTagRules,
-  onTagRulesChanged,
-  type FolderPick,
-  type TagRule,
-} from "src/shared/storage.ts";
+import { matchRule, type ModelFacts, type Rule, type RuleCond } from "src/shared/rules.ts";
+import { getLastFolder, getRules, onRulesChanged, type FolderPick } from "src/shared/storage.ts";
 import { PAGE_CSS } from "src/shared/theme.ts";
 import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
 
@@ -63,8 +58,12 @@ export class ListingSvc {
   private tip = new Tip();
   private ctx: FolderCtx;
 
-  /** draft: the tag bar's unsaved rule, previewed live by every chip */
-  constructor(draft: () => TagRule | null) {
+  /** draft: the rule being edited, previewed live by every chip; onStats: what is on screen */
+  constructor(
+    private draft: () => Rule | null,
+    private onStats: (s: PageStats) => void,
+    private focus: () => RuleCond | null,
+  ) {
     makeObservable(this, {});
     injectPageCss();
     this.ctx = new FolderCtx(draft, () => this.schedule());
@@ -147,13 +146,21 @@ export class ListingSvc {
       presence: this.known.has(modelId) ? (this.known.get(modelId) ?? null) : undefined,
       remote: m,
       jobs: this.jobs,
+      focus: this.focus(),
       target: (v) => (m == null ? null : this.ctx.target(m, v)),
     });
   }
 
   /** idempotent: rebuilds a card's chips only when their content changed, so it never feeds the observer a loop */
   private render(): void {
-    for (const c of modelCards()) {
+    const cards = modelCards();
+    this.onStats(
+      pageStats(
+        cards.map((c) => this.remote.get(c.modelId) ?? null),
+        this.draft(),
+      ),
+    );
+    for (const c of cards) {
       const chips = this.chipsOf(c.modelId);
       const existing = c.el.querySelector<HTMLElement>(`:scope > [${CHIPS_ATTR}]`);
       if (chips.length === 0) {
@@ -262,20 +269,20 @@ export class ListingSvc {
 
 /** rules, roots and last folders held in memory, so every chip resolves its target synchronously */
 class FolderCtx {
-  private rules: TagRule[] = [];
+  private rules: Rule[] = [];
   private roots = new Map<LmPrefix, string[]>();
   private last = new Map<LmPrefix, FolderPick | null>();
   private loading = new Set<LmPrefix>();
 
   constructor(
-    private draft: () => TagRule | null,
+    private draft: () => Rule | null,
     private changed: () => void,
   ) {
-    void getTagRules().then((r) => {
+    void getRules().then((r) => {
       this.rules = r;
       changed();
     });
-    onTagRulesChanged((r) => {
+    onRulesChanged((r) => {
       this.rules = r;
       changed();
     });
@@ -321,11 +328,10 @@ class FolderCtx {
     }
     const r = resolveFolder({
       roots,
-      modelTags: m.tags,
-      pageTag: parsePageTag(location.href),
+      model: factsOf(m),
+      baseModel: v.baseModel,
       rules: withDraft(this.rules, this.draft()),
       last: this.last.get(prefix) ?? null,
-      baseModel: v.baseModel,
     });
     return {
       root: r.pick.root,
@@ -340,6 +346,8 @@ export type ChipInput = {
   presence: Presence | null | undefined;
   remote: CivitaiModel | null;
   jobs: ReadonlyMap<number, DownloadState>;
+  /** focus in force: install chips only for matching versions */
+  focus?: RuleCond | null;
   target: (v: CivitaiVersion) => Target | null;
 };
 
@@ -349,12 +357,24 @@ const baseName = (g: BaseGroup) => g.base ?? "other";
 export function chipsFor(p: ChipInput): Chip[] {
   if (p.presence === undefined) return [];
   const localIds = p.presence?.versions.map((v) => v.versionId) ?? [];
+  const focus = p.focus ?? null;
   if (p.remote == null) {
-    if (p.presence == null) return [{ cls: "lmf-hot", text: "⬇ Install", install: null }];
+    // under focus an unknown model gets no install chip: its base model is not known yet
+    if (p.presence == null)
+      return focus != null ? [] : [{ cls: "lmf-hot", text: "⬇ Install", install: null }];
     const n = p.presence.versions.length;
     return [{ cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" }];
   }
-  const groups = baseGroups(p.remote.versions, localIds);
+  const facts = factsOf(p.remote);
+  const all = baseGroups(p.remote.versions, localIds);
+  // focus hides install chips only: what you have, and newer versions of it, always show
+  const groups = all.filter(
+    (g) =>
+      focus == null ||
+      g.have != null ||
+      p.jobs.has(g.latest.id) ||
+      matchRule(focus, facts, g.latest.baseModel),
+  );
   const chips = groups.slice(0, MAX_BASE_CHIPS).map((g): Chip => {
     const name = baseName(g);
     const job = p.jobs.get(g.latest.id);
@@ -528,6 +548,28 @@ export function tipLines(p: TipInput, paths: Map<number, string[]> | undefined):
     }
   }
   return out;
+}
+
+export function factsOf(m: CivitaiModel): ModelFacts {
+  return { name: m.name, tags: m.tags, prefix: lmPrefixForCivitaiType(m.type) };
+}
+
+/** cards on screen, how many the draft matches (any version), and their tags and bases by frequency */
+export function pageStats(models: (CivitaiModel | null)[], draft: Rule | null): PageStats {
+  const tags = new Map<string, number>();
+  const bases = new Map<string, number>();
+  let matched = 0;
+  for (const m of models) {
+    if (m == null) continue;
+    for (const t of m.tags) tags.set(t, (tags.get(t) ?? 0) + 1);
+    const seen = new Set(m.versions.map((v) => v.baseModel).filter((b): b is string => b != null));
+    for (const b of seen) bases.set(b, (bases.get(b) ?? 0) + 1);
+    if (draft != null && m.versions.some((v) => matchRule(draft.cond, factsOf(m), v.baseModel)))
+      matched++;
+  }
+  const top = (xs: Map<string, number>, n: number) =>
+    [...xs].sort((a, b) => b[1] - a[1]).slice(0, n);
+  return { total: models.length, matched, tags: top(tags, 12), bases: top(bases, 8) };
 }
 
 type ModelCard = { el: HTMLAnchorElement; modelId: number };

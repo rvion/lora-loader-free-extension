@@ -5,6 +5,16 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Rules became multi condition (rules.ts: tags, name/tag has, base, type;
+  AND across fields, OR inside), edited in a popover opened from a bar that
+  is on every page (RulesSvc, RulesUi) and from the model page card; tag
+  rules migrated once (rules2). Page context pre fills the draft (tag page,
+  search query, url filters); the draft previews live on chips and on the
+  card. No match now falls back to the last root with no subfolder: the
+  last subfolder (krea2/styles) was landing Illustrious models in a Krea
+  folder. Focus (FocusSvc) filters which models get install chips. Chips
+  are glass with a pulsing dot so the illustration stays visible.
+
 - Listing chips are one per base model (baseGroups, hasNewer): a single
   "✓ LM" on a Krea 2 / Anima / Illustrious model hid which one you have.
   Install chips carry their target ([root] (sub)), resolved synchronously by

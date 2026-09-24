@@ -68,6 +68,23 @@ version per base model. When several qualify, the latest one wins.
   it. The version dropdown marks each row `✓ have` and `newest`.
 - Listing: per base model, see "listing cards".
 
+## Focus (which models get install chips)
+
+Civitai shows everything; focus narrows the red `⬇ Install` chips to the
+models you care about. Focus is a filter with the same fields as a rule's
+conditions (base model, type, tags, name/tag has; filled fields AND, values
+OR), plus an on/off switch, saved.
+
+- **Focus ▾** opens a popover: the on/off switch, then per field the values
+  as toggles: quick picks from this page's cards (base models, tags, most
+  frequent first) plus the values already in the focus, and a text box to
+  add one. The button reads `Focus: off`, or `Focus: Illustrious, LoRA`.
+- While focus is on and has at least one value, a listing card's `⬇`
+  install chip only shows for base models (versions) that match it. `✓` and
+  `⬆ NEWER` chips of models you have always show. The tooltip still lists
+  every base.
+- The model page card is not filtered: you opened that model on purpose.
+
 ## Dock and free mode (card and tag bar)
 
 Each overlay is in one of two modes, saved per overlay:
@@ -172,48 +189,103 @@ Civitai data for every model on screen comes from `/api/v1/models?ids=…`,
 ids. LM unreachable → no chips, retried every 30 s. The chips swallow the
 click, so civitai's card never navigates.
 
+Chips are **glass**: a see through dark body with thin white text so the
+illustration stays visible, the state in a small dot at the start
+(pulsing red: install or newer; green: have; orange: installing; solid red:
+failed). Hovering a clickable chip makes it opaque.
+
 Hovering a chip shows a styled tooltip at once: each local version as
 `v1.0 · Krea 2` with where its files are (`loras › krea2/styles / file`,
 fetched on first hover then cached), then one line per base: up to date,
 newer version out, or not installed with its target.
 
-## Tag rules (tag → folder)
+## Rules (conditions → folder)
 
-A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased. A rule
-only sets the **default** folder (the card's fields on a model page, and
-listing ⬇ Install); editing the card's fields changes one download, never
-the rule.
+A rule is **conditions → root + subfolder**. It only sets the **default**
+folder (the card's fields on a model page, and listing install chips);
+editing the card's fields changes one download, never the rule.
 
-**`{base}`** in a rule's subfolder is replaced by the version's base model,
-made folder safe: lowercase, letters and digits only (`Krea 2` → `krea2`,
-`Flux.1 D` → `flux1d`, `Illustrious` → `illustrious`), `other` when civitai
-gives none. So `style → loras / {base}/styles` sends each LoRA to
-`krea2/styles`, `anima/styles`, … The tag bar has a `{base}` button that
-inserts it, and says what it does.
+**Conditions**, every filled field must match (AND), any value inside a
+field is enough (OR); a rule with no condition cannot be saved:
 
-- **Where the folder comes from**, for the card and for ⬇ Install: on a tag
-  page (`/models?tag=concept`, `/tag/concept`) that page's tag rule wins;
-  otherwise the first rule, in list order, matching one of the model's tags;
-  otherwise the last folder used for that model type. A rule's root only
-  applies when it is a root of the model's type (a LoRA root never applies
-  to a checkpoint); the subfolder always does.
-- **Tag bar**: on a tag page, a glowing bar reads
-  `⠿ Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved
-  rule with Delete. Roots offered are every root LoRA Manager
-  knows, grouped LoRA / Checkpoint / Embedding, preselected on the saved
-  rule's root, else the last LoRA root used. It folds to a pill. Placement: see "Dock and free mode". Its dock
-  is its own strip inserted right under civitai's header (`#main header`,
-  in the page flow, so it pushes the page down and covers nothing).
-  Floating default: bottom left.
-- The card shows `Folder from rule: concept` under the folder picker when a
-  rule chose it. Editing the folder there changes this download only (and
-  the last used folder), never the rule.
-- **Popup**: a Rules list, each row with ↑ (move up) and ×.
+| field | matches when |
+|---|---|
+| tags | the model has one of these civitai tags |
+| name or tag contains | one of these texts is in the model name or in one of its tags (case insensitive) |
+| base model | the version's base model is one of these (`Krea 2`, `Anima`, …) |
+| type | the model type is one of LoRA / Checkpoint / Embedding |
+
+**Order**: the first matching rule wins. While the rules popover is open,
+its draft (saved or not) is tried first, so the page previews it.
+
+**`{base}`** in the subfolder is replaced by the version's base model, made
+folder safe: lowercase, letters and digits only (`Krea 2` → `krea2`,
+`Flux.1 D` → `flux1d`), `other` when civitai gives none. The root applies
+only when it is a root of the model's type (a LoRA root never applies to a
+checkpoint); the subfolder always does. **No rule matches** → the last root
+used for that type with **no subfolder** (never the last subfolder: it was
+built for another model, e.g. `krea2/styles` for an Illustrious model), and
+the card says "no rule matches this model".
+
+Rules feed two places: listing install chips, and the default folder of
+the card on a model page. The same **rules popover** opens from both: the
+rules strip on listing pages, and a **Rules** tool on the model page card.
+On a model page the editor starts from that model (its version's base
+model; a saved rule the model already matches opens instead), and while it
+is open the card's folder fields preview the draft live.
+
+**The bar** is on **every civitai page**, docked as its own strip under
+civitai's header (see "dock and free mode"). It always starts with
+**[Rules ▾] [Focus ▾]**. On a model page the card's row is the bar (it starts
+with the same two buttons, then the card's own content); everywhere else
+the bar holds:
+
+```
+[LM] [Rules (5) ▾] [Focus: Illustrious, Krea 2 ▾]  here: tag style → loras / {base}/styles   ⇱
+```
+
+The "here" line is the saved rule this page's context matches, else "no
+rule for this page yet".
+
+**Rules popover** (opened by the button, closed by it, ✕, Esc or a click
+outside; the strip's layout never changes):
+
+```
+Rules                                            [+ New]  ✕
+ 1  tag style · base Krea 2  → loras / {base}/styles   ✎ ↑ ✕
+ 2  has monster              → loras / {base}/monsters ✎ ↑ ✕
+─────────────────────────────────────────────────────────────
+New rule from this page                  (or: Editing rule 2)
+ IF tag [style ✕]  base [Krea 2 ✕]  [+ condition]
+ → [loras ▾] / [{base}/styles ▾] {base}
+ matches 14 of 40 cards here                      [Save rule]
+```
+
+- **Draft from the page** when it opens: a tag page (`/models?tag=style`,
+  `/tag/style`) → tag `style`; a search (`/search/models?query=monster`) →
+  name or tag contains `monster` (the whole query as one text); base model
+  or tag filters in the url are taken too. Default target: the last LoRA
+  root and `{base}/<tag or query>`. When a saved rule has exactly these
+  conditions, the editor opens on that rule instead. A page with no context
+  opens on a blank new rule.
+- **Conditions** show as removable chips. `+ condition` opens a small menu:
+  pick the field, type a value (Enter adds it), or click a quick pick from
+  the values seen on this page's cards (their tags and base models, most
+  frequent first).
+- **matches N of M cards here** counts the draft against the model cards on
+  screen.
+- **Save rule** / **Update rule**; ✎ loads a rule into the editor, **+ New**
+  starts a blank one.
+- While the popover is open every listing chip previews the draft; closing
+  it without saving drops the draft.
+
+Existing tag rules are migrated once into rules with a single tag condition.
 
 ## The popup
 
 - LoRA Manager URL, default `http://127.0.0.1:8188`, with a Test button that
   shows the LM version or the error.
+- Rules: the same list as the bar's popover, one line each, ↑ and ✕.
 - Marked list: model name, version, file variant when one was picked, target
   folder, remove button, and
   **Download all** (hands every item to LoRA Manager at once. The server

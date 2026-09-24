@@ -2,17 +2,18 @@ import { makeAutoObservable, runInAction } from "mobx";
 
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
+import type { Rule } from "src/shared/rules.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
   DEFAULT_LM_URL,
   getMarked,
   getSettings,
   onMarkedChanged,
-  getTagRules,
+  deleteRule,
+  getRules,
+  moveRuleUp,
   onSettingsChanged,
-  onTagRulesChanged,
-  setTagRules,
-  type TagRule,
+  onRulesChanged,
   saveLmUrl,
   setMarked,
   type MarkedItem,
@@ -29,7 +30,7 @@ export class PopupSt {
   restart: RestartSt;
   marked: MarkedItem[] = [];
   launched: Launched[] = [];
-  rules: TagRule[] = [];
+  rules: Rule[] = [];
   isLaunching = false;
   saveError: string | null = null;
 
@@ -53,31 +54,26 @@ export class PopupSt {
     });
     onMarkedChanged((items) => this.setMarkedItems(items));
     onSettingsChanged((s) => this.setSaved(s.lmUrl));
-    const rules = await getTagRules();
+    const rules = await getRules();
     runInAction(() => (this.rules = rules));
-    onTagRulesChanged((r) => this.setRules(r));
+    onRulesChanged((r) => this.setRules(r));
   }
 
   setMarkedItems(items: MarkedItem[]): void {
     this.marked = items;
   }
 
-  setRules(rules: TagRule[]): void {
+  setRules(rules: Rule[]): void {
     this.rules = rules;
   }
 
   /** order is priority: the first matching rule wins */
-  async moveRuleUp(tag: string): Promise<void> {
-    const rules = await getTagRules();
-    const i = rules.findIndex((r) => r.tag === tag);
-    const prev = rules[i - 1];
-    const cur = rules[i];
-    if (i <= 0 || prev == null || cur == null) return;
-    await setTagRules([...rules.slice(0, i - 1), cur, prev, ...rules.slice(i + 1)]);
+  moveRuleUp(id: string): Promise<void> {
+    return moveRuleUp(id);
   }
 
-  async deleteRule(tag: string): Promise<void> {
-    await setTagRules((await getTagRules()).filter((r) => r.tag !== tag));
+  deleteRule(id: string): Promise<void> {
+    return deleteRule(id);
   }
 
   setUrlDraft(url: string): void {

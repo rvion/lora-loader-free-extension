@@ -22,9 +22,14 @@
 - Listing cards get one chip per base model (Krea 2, Anima, Illustrious, …)
   saying which you have, which have a newer version, and where each missing
   one would install: "⬇ Anima [loras] (anima/styles)".
-- Tag rules accept {base} in the subfolder, replaced by the version's base
-  model, so one rule can split by base model. Editing the tag bar retargets
-  every install chip on the page as you type.
+- Rules: conditions on tags, name or tag text, base model and type, pick
+  the default folder; {base} in the subfolder splits by base model. A bar on
+  every Civitai page opens them in a popover, pre filled from the tag page
+  or search you are on, with a live preview on every install chip.
+- Focus: show install chips only for the base models, types or tags you
+  care about.
+- Install chips are see through, with a small pulsing dot, so the picture
+  stays visible.
 - Newer versions are flagged: "⬆ NEWER VERSION" on listing cards (one click
   installs it) and "⬆ NEWER" on the card, counting only a later version for
   the same base model.

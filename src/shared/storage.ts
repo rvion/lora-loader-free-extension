@@ -1,5 +1,6 @@
 import type { LmPrefix } from "src/shared/civitai.ts";
 import { normalizeBaseUrl } from "src/shared/lmClient.ts";
+import { emptyCond, newRuleId, type Rule, type RuleCond } from "src/shared/rules.ts";
 
 export const DEFAULT_LM_URL = "http://127.0.0.1:8188";
 
@@ -81,32 +82,63 @@ export async function setPlacement(id: OverlayId, p: SavedPlacement): Promise<vo
   await chrome.storage.local.set({ [`placement2:${id}`]: p });
 }
 
-export type TagRule = {
-  /** lowercased civitai tag */
-  tag: string;
-  /** null only on rules saved before roots were picked explicitly: resolves to the last used root */
-  root: string | null;
-  sub: string;
-};
+/** the tag rules of earlier versions, read once to migrate them */
+type LegacyTagRule = { tag: string; root: string | null; sub: string };
 
-export async function getTagRules(): Promise<TagRule[]> {
-  const got = await chrome.storage.local.get("tagRules");
-  return (got.tagRules as TagRule[] | undefined) ?? [];
+/** rules in priority order. the first read migrates the legacy tag rules */
+export async function getRules(): Promise<Rule[]> {
+  const got = await chrome.storage.local.get(["rules2", "tagRules"]);
+  const rules = got.rules2 as Rule[] | undefined;
+  if (rules != null) return rules;
+  const legacy = (got.tagRules as LegacyTagRule[] | undefined) ?? [];
+  const migrated = legacy.map((r): Rule => ({
+    id: newRuleId(),
+    cond: { ...emptyCond(), tags: [r.tag] },
+    root: r.root,
+    sub: r.sub,
+  }));
+  await chrome.storage.local.set({ rules2: migrated });
+  return migrated;
 }
 
-export async function setTagRules(rules: TagRule[]): Promise<void> {
-  await chrome.storage.local.set({ tagRules: rules });
+export async function setRules(rules: Rule[]): Promise<void> {
+  await chrome.storage.local.set({ rules2: rules });
 }
 
-/** replaces the rule for that tag in place, or appends it (lowest priority) */
-export async function saveTagRule(rule: TagRule): Promise<void> {
-  const rules = await getTagRules();
-  const i = rules.findIndex((r) => r.tag === rule.tag);
-  await setTagRules(i >= 0 ? rules.map((r, j) => (j === i ? rule : r)) : [...rules, rule]);
+/** replaces the rule with that id in place, or appends it (lowest priority) */
+export async function saveRule(rule: Rule): Promise<void> {
+  const rules = await getRules();
+  const i = rules.findIndex((r) => r.id === rule.id);
+  await setRules(i >= 0 ? rules.map((r, j) => (j === i ? rule : r)) : [...rules, rule]);
 }
 
-export async function deleteTagRule(tag: string): Promise<void> {
-  await setTagRules((await getTagRules()).filter((r) => r.tag !== tag));
+export async function deleteRule(id: string): Promise<void> {
+  await setRules((await getRules()).filter((r) => r.id !== id));
+}
+
+export async function moveRuleUp(id: string): Promise<void> {
+  const rules = await getRules();
+  const i = rules.findIndex((r) => r.id === id);
+  const prev = rules[i - 1];
+  const cur = rules[i];
+  if (i <= 0 || prev == null || cur == null) return;
+  await setRules([...rules.slice(0, i - 1), cur, prev, ...rules.slice(i + 1)]);
+}
+
+/** agent/spec.md "focus": which models get install chips */
+export type Focus = { enabled: boolean; cond: RuleCond };
+
+export async function getFocus(): Promise<Focus> {
+  const got = await chrome.storage.local.get("focus");
+  return (got.focus as Focus | undefined) ?? { enabled: false, cond: emptyCond() };
+}
+
+export async function setFocus(f: Focus): Promise<void> {
+  await chrome.storage.local.set({ focus: f });
+}
+
+export function onFocusChanged(cb: (f: Focus) => void): () => void {
+  return onLocalChanged<Focus>("focus", (v) => cb(v ?? { enabled: false, cond: emptyCond() }));
 }
 
 /** fires with the new list whenever any surface changes it */
@@ -114,8 +146,8 @@ export function onMarkedChanged(cb: (items: MarkedItem[]) => void): () => void {
   return onLocalChanged<MarkedItem[]>("marked", (v) => cb(v ?? []));
 }
 
-export function onTagRulesChanged(cb: (rules: TagRule[]) => void): () => void {
-  return onLocalChanged<TagRule[]>("tagRules", (v) => cb(v ?? []));
+export function onRulesChanged(cb: (rules: Rule[]) => void): () => void {
+  return onLocalChanged<Rule[]>("rules2", (v) => cb(v ?? []));
 }
 
 function onLocalChanged<T>(key: string, cb: (v: T | undefined) => void): () => void {

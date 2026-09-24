@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
+import { usePopoverDismiss } from "src/content/popover.ts";
+import { FocusButton, RulesButton } from "src/content/RulesUi.tsx";
 import { SubfolderBox } from "src/content/SubfolderBox.tsx";
+import { summarizeCond } from "src/shared/rules.ts";
 import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
@@ -35,6 +38,10 @@ export const Card = obs(function Card(p: { st: CardSt }) {
           LM
         </span>
       </header>
+      <span className="bar-buttons">
+        <RulesButton st={st.rules} picks={st.page.picks} onOpen={() => void st.openRules()} />
+        <FocusButton st={st.focus} picks={st.page.picks} />
+      </span>
       <DockMiss place={st.placement} />
       <Body st={st} />
       <span className="tools">
@@ -61,24 +68,9 @@ export const Card = obs(function Card(p: { st: CardSt }) {
 const ServerPopover = obs(function ServerPopover(p: { st: CardSt }) {
   const sv = p.st.server;
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    // outside click: our events come from inside a shadow root, so test the composed path
-    const onDown = (e: PointerEvent) => {
-      const el = ref.current;
-      const tools = el?.parentElement;
-      if (tools != null && !e.composedPath().includes(tools)) sv.close();
-    };
-    document.addEventListener("pointerdown", onDown, true);
-    return () => document.removeEventListener("pointerdown", onDown, true);
-  }, [sv]);
+  usePopoverDismiss(ref, () => sv.close());
   return (
-    <div
-      className="popover"
-      ref={ref}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") sv.close();
-      }}
-    >
+    <div className="popover" ref={ref}>
       <div className="popover-head">
         <span>LoRA Manager server</span>
         <button className="icon" onClick={() => sv.close()} title="Close">
@@ -319,6 +311,18 @@ function WhereLine(p: { path: string; roots: string[] }) {
   );
 }
 
+const FolderSource = obs(function FolderSource(p: { st: CardSt }) {
+  const f = p.st.folder;
+  if (f.source === "hand") return null;
+  return f.via != null ? (
+    <p className="rule" title={`→ ${f.via.sub}`}>
+      rule: {summarizeCond(f.via.cond)}
+    </p>
+  ) : (
+    <p className="rule none">no rule matches this model</p>
+  );
+});
+
 const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
   const f = p.st.folder;
   const c = f.choices;
@@ -352,91 +356,7 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
           onChange={(v) => f.setSub(v)}
         />
       </label>
-      {f.via != null && <p className="rule">Folder from rule: {f.via}</p>}
+      <FolderSource st={p.st} />
     </div>
-  );
-});
-
-export const TagBar = obs(function TagBar(p: { st: CardSt }) {
-  const t = p.st.tag;
-  if (t.pageTag == null) return null;
-  if (t.minimized)
-    return (
-      <Movable place={t.placement} className="tagwrap">
-        <button className="tagpill lmf-hot" onClick={() => t.toggleMinimized()} title="Tag rule">
-          # {t.pageTag}
-          {t.rule != null ? " ✓" : ""}
-        </button>
-      </Movable>
-    );
-  return (
-    <Movable place={t.placement} className="tagwrap">
-      <div className="tagbar">
-        <span
-          className="grip"
-          onPointerDown={(e) => startDrag(e, t.placement)}
-          title="Drag to move"
-        >
-          ⠿
-        </span>
-        <span className="tagname">
-          Tag <b>{t.pageTag}</b> →
-        </span>
-        <select
-          value={t.draftRoot}
-          onChange={(e) => t.setDraftRoot(e.currentTarget.value)}
-          title={t.draftRoot}
-        >
-          {t.draftRoot === "" && <option value="">loading roots…</option>}
-          {(t.roots.result?.byType ?? []).map((g) => {
-            const labels = rootLabels(g.roots);
-            return (
-              <optgroup key={g.prefix} label={g.label}>
-                {g.roots.map((r) => (
-                  <option key={r} value={r} title={r}>
-                    {labels.get(r) ?? r}
-                  </option>
-                ))}
-              </optgroup>
-            );
-          })}
-        </select>
-        <span>/</span>
-        <SubfolderBox
-          value={t.draftSub}
-          folders={t.roots.result?.folders ?? []}
-          onChange={(v) => t.setDraftSub(v)}
-          onEnter={() => void t.save()}
-        />
-        <button
-          className="icon basebtn"
-          onClick={() => t.insertBase()}
-          title="{base} = the version's base model, folder safe (Krea 2 → krea2, Anima → anima). Put it in the subfolder to split by base model, e.g. {base}/styles"
-        >
-          {"{base}"}
-        </button>
-        {t.isDirty ? (
-          <button className="lmf-hot" onClick={() => void t.save()}>
-            {t.rule == null ? "Save rule" : "Update rule"}
-          </button>
-        ) : (
-          <span className="saved lmf-cool">✓ rule saved</span>
-        )}
-        {t.rule != null && (
-          <button onClick={() => void t.remove()} title="Delete this rule">
-            Delete
-          </button>
-        )}
-        <DockButton place={t.placement} />
-        {!t.placement.isDocked && (
-          <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
-            –
-          </button>
-        )}
-        {t.roots.error != null && <span className="error">{t.roots.error.message}</span>}
-        {t.saveError != null && <span className="error">{t.saveError}</span>}
-        <DockMiss place={t.placement} />
-      </div>
-    </Movable>
   );
 });

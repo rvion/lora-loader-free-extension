@@ -63,25 +63,6 @@ function formatSize(kb: number): string {
   return kb >= 1024 * 1024 ? `${(kb / 1024 / 1024).toFixed(1)} GB` : `${Math.round(kb / 1024)} MB`;
 }
 
-/** the tag a civitai listing is filtered by: `/models?tag=x` or `/tag/x` */
-export function parsePageTag(href: string): string | null {
-  let url: URL;
-  try {
-    url = new URL(href);
-  } catch {
-    return null;
-  }
-  const fromPath = /^\/tag\/([^/?#]+)/.exec(url.pathname)?.[1];
-  const raw =
-    fromPath != null
-      ? decodeURIComponent(fromPath)
-      : url.pathname === "/models"
-        ? url.searchParams.get("tag")
-        : null;
-  const tag = raw?.trim().toLowerCase() ?? "";
-  return tag !== "" ? tag : null;
-}
-
 /** a model id from any link civitai renders: relative or absolute, with or without slug */
 export function modelIdFromHref(href: string): number | null {
   const m = /^(?:https?:\/\/(?:www\.)?civitai\.(?:com|red))?\/models\/(\d+)(?:[/?#]|$)/.exec(href);

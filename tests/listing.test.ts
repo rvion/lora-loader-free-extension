@@ -1,6 +1,13 @@
 import { expect, test } from "bun:test";
 
-import { chipsFor, chunk, tipLines, unknownIds, type Target } from "src/content/ListingSvc.ts";
+import {
+  chipsFor,
+  chunk,
+  pageStats,
+  tipLines,
+  unknownIds,
+  type Target,
+} from "src/content/ListingSvc.ts";
 import type { CivitaiModel, CivitaiVersion } from "src/shared/civitai.ts";
 import type { DownloadState } from "src/shared/watchDownload.ts";
 
@@ -107,4 +114,34 @@ test("tooltip: local versions with their place, then one line per base", () => {
     "✓ Krea 2: up to date (v10)",
     "⬇ Anima: v11 not installed → loras › anima/styles",
   ]);
+});
+
+test("page stats: matches of the draft, and the tags and bases seen, most frequent first", () => {
+  const style = { ...model(ver(1, "Krea 2", "2026-09-01")), tags: ["style", "anime"] };
+  const other = { ...model(ver(2, "Anima", "2026-09-01")), id: 2, tags: ["style"] };
+  const draft = {
+    id: "d",
+    cond: { tags: ["style"], words: [], bases: ["Anima"], types: [] },
+    root: "/r",
+    sub: "",
+  };
+  expect(pageStats([style, other, null], draft)).toEqual({
+    total: 3,
+    matched: 1,
+    tags: [
+      ["style", 2],
+      ["anime", 1],
+    ],
+    bases: [
+      ["Krea 2", 1],
+      ["Anima", 1],
+    ],
+  });
+});
+
+test("focus hides install chips of other bases, never what you have", () => {
+  const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
+  const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target, focus });
+  expect(chips.map((c) => c.text)).toEqual(["✓ Krea 2", "⬇ Illustrious"]);
+  expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target, focus })).toEqual([]);
 });

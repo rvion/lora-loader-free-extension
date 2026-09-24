@@ -14,12 +14,15 @@ import {
   type LmPrefix,
 } from "src/shared/civitai.ts";
 import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts";
+import type { ModelFacts, Rule } from "src/shared/rules.ts";
 import type { LibraryBatch, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { AdSvc } from "src/content/AdSvc.ts";
 import { ListingSvc } from "src/content/ListingSvc.ts";
 import { PlacementSvc } from "src/content/PlacementSvc.ts";
-import { TagSvc } from "src/content/TagSvc.ts";
+import { factsOf } from "src/content/ListingSvc.ts";
+import { FocusSvc } from "src/content/FocusSvc.ts";
+import { RulesSvc } from "src/content/RulesSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
@@ -48,17 +51,23 @@ export class CardSt {
   listing: ListingSvc;
   ads: AdSvc;
   placement: PlacementSvc;
-  tag: TagSvc;
+  rules: RulesSvc;
+  focus: FocusSvc;
   collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
-    this.listing = new ListingSvc(() => this.tag.draftRule);
+    this.focus = new FocusSvc();
+    this.listing = new ListingSvc(
+      () => this.rules.draftRule,
+      (s) => this.rules.setStats(s),
+      () => this.focus.active,
+    );
     this.ads = new AdSvc();
     this.placement = new PlacementSvc("card");
-    this.tag = new TagSvc();
+    this.rules = new RulesSvc(() => this.page.isModelPage);
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
       ping: () => send({ kind: "ping" }),
@@ -83,12 +92,20 @@ export class CardSt {
       listing: false,
       ads: false,
       placement: false,
-      tag: false,
+      rules: false,
+      focus: false,
     });
-    // the tag bar's draft retargets every listing chip as you type
     reaction(
-      () => JSON.stringify(this.tag.draftRule),
+      () => JSON.stringify(this.focus.active),
       () => this.listing.refresh(),
+    );
+    // the rule being edited retargets every listing chip, and the card's folder, as you type
+    reaction(
+      () => JSON.stringify(this.rules.draftRule),
+      () => {
+        this.listing.refresh();
+        void this.refreshFolder();
+      },
     );
   }
 
@@ -98,7 +115,7 @@ export class CardSt {
 
   /** called on every url change the page makes */
   onUrl(href: string): void {
-    this.tag.onUrl(href);
+    this.rules.onUrl(href);
     const ref = parseCivitaiModelUrl(href);
     if (!this.page.setRef(ref)) return;
     this.download.reset();
@@ -116,6 +133,25 @@ export class CardSt {
     void this.refreshForVersion();
   }
 
+  /** the default folder from the rules (the draft first while the rules popover is open) */
+  refreshFolder(): Promise<void> {
+    const m = this.page.model.result;
+    const v = this.page.version;
+    const prefix = this.page.prefix;
+    if (m == null || v == null || prefix == null) return Promise.resolve();
+    return this.folder.load(prefix, factsOf(m), v.baseModel);
+  }
+
+  /** the rules popover on a model page: starts from the rule that applied, else this version's base model */
+  openRules(): Promise<void> {
+    const base = this.page.version?.baseModel;
+    const via = this.folder.source === "rule" ? this.folder.via : null;
+    return this.rules.open({
+      existing: via,
+      cond: base != null ? { tags: [], words: [], bases: [base], types: [] } : null,
+    });
+  }
+
   async refreshForVersion(): Promise<void> {
     const m = this.page.model.result;
     const v = this.page.version;
@@ -123,7 +159,7 @@ export class CardSt {
     if (m == null || v == null || prefix == null) return;
     await Promise.all([
       this.library.check(),
-      this.folder.load(prefix, m.tags, v.baseModel),
+      this.refreshFolder(),
       this.download.resume(m.id, v.id),
     ]);
   }
@@ -279,6 +315,14 @@ export class PageSvc {
     return m == null ? null : lmPrefixForCivitaiType(m.type);
   }
 
+  /** quick picks for the rules editor on a model page: this model's tags and base models */
+  get picks(): { tags: string[]; bases: string[] } {
+    const m = this.model.result;
+    if (m == null) return { tags: [], bases: [] };
+    const bases = m.versions.map((v) => v.baseModel).filter((b): b is string => b != null);
+    return { tags: m.tags, bases: [...new Set(bases)] };
+  }
+
   get isModelPage(): boolean {
     return this.ref != null;
   }
@@ -327,30 +371,34 @@ export class LibrarySvc {
 export class FolderSvc {
   choices: Query<FolderSuggestion>;
   pick: FolderPick = { root: "", sub: "" };
-  /** the rule tag that chose the current pick, null once edited by hand */
-  via: string | null = null;
+  /** the rule that chose the pick, when source is "rule" */
+  via: Rule | null = null;
+  /** rule: a rule chose it; none: no rule matched; hand: edited in the card */
+  source: "rule" | "none" | "hand" = "none";
   private prefix: LmPrefix | null = null;
-  private tags: string[] = [];
+  private facts: ModelFacts | null = null;
   private baseModel: string | null = null;
 
   constructor(private st: CardSt) {
     this.choices = new Query(() => {
       const prefix = this.prefix;
-      if (prefix == null) return Promise.reject(new Error("unsupported model type"));
-      return suggestFolder(prefix, this.tags, null, this.baseModel);
+      const facts = this.facts;
+      if (prefix == null || facts == null)
+        return Promise.reject(new Error("unsupported model type"));
+      return suggestFolder(prefix, facts, this.baseModel, this.st.rules.draftRule);
     });
-    makeAutoObservable<FolderSvc, "st" | "prefix" | "tags" | "baseModel">(this, {
+    makeAutoObservable<FolderSvc, "st" | "prefix" | "facts" | "baseModel">(this, {
       st: false,
       choices: false,
       prefix: false,
-      tags: false,
+      facts: false,
       baseModel: false,
     });
   }
 
-  async load(prefix: LmPrefix, tags: string[], baseModel: string | null): Promise<void> {
+  async load(prefix: LmPrefix, facts: ModelFacts, baseModel: string | null): Promise<void> {
     this.prefix = prefix;
-    this.tags = tags;
+    this.facts = facts;
     this.baseModel = baseModel;
     await this.choices.run();
     runInAction(() => {
@@ -358,18 +406,19 @@ export class FolderSvc {
       if (r == null) return;
       this.pick = r.pick;
       this.via = r.via;
+      this.source = r.via != null ? "rule" : "none";
     });
   }
 
   setRoot(root: string): void {
     this.pick = { ...this.pick, root };
-    this.via = null;
+    this.source = "hand";
     this.remember();
   }
 
   setSub(sub: string): void {
     this.pick = { ...this.pick, sub: normalizeSub(sub) };
-    this.via = null;
+    this.source = "hand";
     this.remember();
   }
 
