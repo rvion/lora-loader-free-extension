@@ -27,8 +27,9 @@ ${glow(".lmf-danger", DANGER, HOT_HALO)}
 /** injected once into civitai's own document for the listing overlays */
 export const PAGE_CSS = `
 ${GLOW_CSS}
-.lmf-chip { position: absolute !important; top: 8px; left: 8px; z-index: 30; display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px 12px; border-radius: 999px; font: 800 14px/18px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
+/* below the badge row civitai draws along the top of each card */
+.lmf-chip { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px; font: 800 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
   cursor: default; user-select: none; }
 .lmf-chip.lmf-hot, .lmf-chip.lmf-danger { cursor: pointer; }
 .lmf-chip.lmf-hot:hover { transform: scale(1.08); }

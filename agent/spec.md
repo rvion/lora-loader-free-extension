@@ -56,8 +56,9 @@ under `prefers-reduced-motion`.
 ## Listing cards (every civitai page)
 
 Every model card (a link to `/models/<id>` that holds an image or video:
-home, search, browse, tag pages, creator pages, suggestions) gets, at its top
-left, once LM has answered for it:
+home, search, browse, tag pages, creator pages, suggestions) gets, on its
+left edge 44px down (below the badge row civitai draws along the top of the
+card), once LM has answered for it:
 
 | state | shown |
 |---|---|
