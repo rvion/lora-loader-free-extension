@@ -2,7 +2,16 @@
 
 ## The card (civitai model pages)
 
-Appears bottom right on `https://civitai.com/models/<id>` and
+Where it sits, first match wins:
+- **where you dragged it**: the header is a drag handle, the spot is saved
+  (kept on screen when the window shrinks), and a ↺ button in the header
+  puts the card back in its default place;
+- **docked in civitai's right rail** (desktop model pages): it takes the
+  place of the rail ad (`[class*="-module__"][class*="__rail"]`), whose
+  content is hidden while the card is docked there;
+- **bottom right**, floating.
+
+Appears on `https://civitai.com/models/<id>` and
 `https://civitai.red/models/<id>`, for the version in `?modelVersionId=`
 (else the model's first version). Follows SPA navigation: switching version
 or model updates the card without a reload. Collapsible to a small pill.

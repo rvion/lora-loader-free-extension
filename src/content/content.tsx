@@ -1,10 +1,16 @@
-import { configure } from "mobx";
+import { configure, reaction } from "mobx";
 import { createRoot } from "react-dom/client";
 
-import { Card, TagBar } from "src/content/Card.tsx";
-import { CARD_CSS } from "src/content/cardCss.ts";
+import { CardShell, TagBar } from "src/content/Card.tsx";
 import { CardSt } from "src/content/CardSt.ts";
-import { createTagHost, placeTagBar } from "src/content/tagDock.ts";
+import {
+  AD_BAR_SLOT,
+  CARD_HOST_ID,
+  createHost,
+  placeHost,
+  RAIL_SLOT,
+  TAG_HOST_ID,
+} from "src/content/dock.ts";
 
 configure({ enforceActions: "always" });
 
@@ -13,30 +19,33 @@ configure({ enforceActions: "always" });
 const URL_POLL_MS = 500;
 
 function mount(): void {
-  const host = document.createElement("div");
-  host.id = "lora-manager-free-card";
-  document.documentElement.appendChild(host);
-  const shadow = host.attachShadow({ mode: "open" });
-  const style = document.createElement("style");
-  style.textContent = CARD_CSS;
-  const root = document.createElement("div");
-  shadow.append(style, root);
-
   const st = new CardSt();
   Object.assign(window, { lmFree: st });
-  const tag = createTagHost();
+
+  const card = createHost(CARD_HOST_ID, "card-root");
+  const tag = createHost(TAG_HOST_ID, "dock");
+  const placeCard = () =>
+    placeHost(card.host, {
+      visible: st.page.isModelPage,
+      slotSelector: RAIL_SLOT,
+      custom: st.placement.pos != null,
+    });
   const tick = () => {
     st.onUrl(location.href);
-    placeTagBar(tag.host, st.tag.pageTag != null);
+    placeCard();
+    placeHost(tag.host, {
+      visible: st.tag.pageTag != null,
+      slotSelector: AD_BAR_SLOT,
+      custom: false,
+    });
   };
   tick();
   setInterval(tick, URL_POLL_MS);
+  // a drag out of the rail must leave it on the first move, not on the next tick
+  reaction(() => st.placement.pos == null, placeCard);
+
+  createRoot(card.mountPoint).render(<CardShell st={st} />);
   createRoot(tag.mountPoint).render(<TagBar st={st} />);
-  createRoot(root).render(
-    <div className="wrap">
-      <Card st={st} />
-    </div>,
-  );
 }
 
 mount();

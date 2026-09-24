@@ -20,11 +20,14 @@ import { TagSvc } from "src/content/TagSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
+  getCardPos,
   getMarked,
   getSettings,
   onMarkedChanged,
   onSettingsChanged,
   saveLmUrl,
+  setCardPos,
+  type CardPos,
   setLastFolder,
   setMarked,
   type FolderPick,
@@ -43,6 +46,7 @@ export class CardSt {
   restart: RestartSt;
   file: FileSvc;
   listing: ListingSvc;
+  placement: PlacementSvc;
   tag: TagSvc;
   collapsed = false;
 
@@ -51,6 +55,7 @@ export class CardSt {
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
     this.listing = new ListingSvc();
+    this.placement = new PlacementSvc();
     this.tag = new TagSvc();
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
@@ -74,6 +79,7 @@ export class CardSt {
       restart: false,
       file: false,
       listing: false,
+      placement: false,
       tag: false,
     });
   }
@@ -103,6 +109,30 @@ export class CardSt {
       this.folder.load(prefix, m.tags),
       this.download.resume(m.id, v.id),
     ]);
+  }
+}
+
+/** where the user dragged the card. null: the default place (docked in the rail, else bottom right) */
+export class PlacementSvc {
+  pos: CardPos | null = null;
+
+  constructor() {
+    makeAutoObservable(this);
+    void getCardPos().then((p) => this.setPos(p));
+  }
+
+  /** live while dragging; `commit` persists the drop */
+  setPos(p: CardPos | null): void {
+    this.pos = p;
+  }
+
+  commit(): void {
+    void setCardPos(this.pos);
+  }
+
+  reset(): void {
+    this.pos = null;
+    void setCardPos(null);
   }
 }
 

@@ -1,7 +1,49 @@
+import type React from "react";
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
+
+/** the positioned box around the card: default place from css, or the dragged spot */
+export const CardShell = obs(function CardShell(p: { st: CardSt }) {
+  const pos = p.st.placement.pos;
+  // clamp keeps a saved spot reachable after the window shrinks
+  const style =
+    pos == null
+      ? undefined
+      : {
+          left: `clamp(0px, ${pos.x}px, calc(100vw - 120px))`,
+          top: `clamp(0px, ${pos.y}px, calc(100vh - 48px))`,
+        };
+  return (
+    <div className="wrap" style={style}>
+      <Card st={p.st} />
+    </div>
+  );
+});
+
+/** header drag. listens on window, not with pointer capture: the first move re-parents the
+ *  card out of civitai's rail, and moving a node releases its capture */
+function startDrag(e: React.PointerEvent<HTMLElement>, st: CardSt): void {
+  if (e.button !== 0 || (e.target instanceof Element && e.target.closest("button") != null)) return;
+  const wrap = e.currentTarget.closest(".wrap");
+  if (wrap == null) return;
+  const box = wrap.getBoundingClientRect();
+  const dx = e.clientX - box.left;
+  const dy = e.clientY - box.top;
+  const move = (ev: PointerEvent) =>
+    st.placement.setPos({ x: Math.round(ev.clientX - dx), y: Math.round(ev.clientY - dy) });
+  const up = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+    st.placement.commit();
+  };
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
+  e.preventDefault();
+}
 
 export const Card = obs(function Card(p: { st: CardSt }) {
   const st = p.st;
@@ -18,9 +60,18 @@ export const Card = obs(function Card(p: { st: CardSt }) {
     );
   return (
     <div className="card">
-      <header>
+      <header onPointerDown={(e) => startDrag(e, st)} title="Drag to move">
         <span className="brand">LoRA Manager</span>
         <span>
+          {st.placement.pos != null && (
+            <button
+              className="icon"
+              onClick={() => st.placement.reset()}
+              title="Back to the default place"
+            >
+              ↺
+            </button>
+          )}
           <button
             className={st.server.isEditing ? "icon on" : "icon"}
             onClick={() => st.server.toggleEditing()}

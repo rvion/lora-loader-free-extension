@@ -64,16 +64,22 @@ stylesheet). Its click handler stops the event and prevents the anchor's
 navigation. Install = civitai model fetch → prefix, latest version, primary
 file → `suggestFolder` → `startDownload` → `watchDownload`.
 
-## Tag bar placement
+## Placement (card and tag bar)
 
-The tag bar has its own shadow host (`#lmf-tagbar-host`, own React root,
-same CARD_CSS), because it moves between civitai's ad slot and
-`documentElement`. `placeTagBar` (`src/content/tagDock.ts`) runs on the
-500 ms url tick: detach off tag pages, dock into `[data-adhesive-ad]` when
-it exists, else float. The ad is hidden by one page css rule,
-`[data-adhesive-ad]:has(> #lmf-tagbar-host) > :not(#lmf-tagbar-host)`, so
-civitai re-rendering the ad cannot bring it back while docked, and it
-returns by itself when the host leaves.
+Both overlays have their own shadow host, placed by `placeHost`
+(`src/content/dock.ts`) on the 500 ms url tick and, for the card, at once
+when its drag state changes (a mobx reaction). Modes, as `data-mode` on the
+host, styled with `:host([data-mode=…])`:
+
+| overlay | docked into | else |
+|---|---|---|
+| card (`#lora-manager-free-card`) | right rail `[class*="-module__"][class*="__rail"]` | `custom` at the saved drag spot, or `floating` bottom right |
+| tag bar (`#lmf-tagbar-host`) | bottom ad bar `[data-adhesive-ad]` | `floating` bottom left |
+
+A saved drag spot beats docking. The ads are hidden by page css rules of the
+shape `slot:has(> #host) > :not(#host)`, so civitai re-rendering an ad
+cannot bring it back while docked, and it returns by itself when the host
+leaves. The card spot lives in `chrome.storage.local` (`cardPos`).
 
 ## Folder choice
 
@@ -94,4 +100,5 @@ shadow root (card, tag bar) and the page stylesheet (listing overlays).
 | `lastFolder:<prefix>` | local | `{ root, sub }` |
 | `marked` | local | `MarkedItem[]` |
 | `tagRules` | local | `TagRule[]` (order = priority) |
+| `cardPos` | local | `{ x, y }` px from the top left, or absent |
 | `active` | session | `Record<versionId, downloadId>` |

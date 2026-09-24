@@ -65,6 +65,18 @@ export async function setMarked(items: MarkedItem[]): Promise<void> {
   await chrome.storage.local.set({ marked: items });
 }
 
+export type CardPos = { x: number; y: number };
+
+export async function getCardPos(): Promise<CardPos | null> {
+  const got = await chrome.storage.local.get("cardPos");
+  return (got.cardPos as CardPos | undefined) ?? null;
+}
+
+export async function setCardPos(pos: CardPos | null): Promise<void> {
+  if (pos == null) await chrome.storage.local.remove("cardPos");
+  else await chrome.storage.local.set({ cardPos: pos });
+}
+
 export type TagRule = {
   /** lowercased civitai tag */
   tag: string;

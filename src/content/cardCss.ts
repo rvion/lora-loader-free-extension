@@ -5,7 +5,13 @@ export const CARD_CSS = `
 :host { all: initial; }
 * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
 ${GLOW_CSS}
-.wrap { position: fixed; right: 18px; bottom: 18px; z-index: 2147483000; }
+.wrap { z-index: 2147483000; }
+:host([data-mode="floating"]) .wrap { position: fixed; right: 18px; bottom: 18px; }
+:host([data-mode="custom"]) .wrap { position: fixed; }
+:host([data-mode="docked"]) .wrap { position: relative; padding: 8px 4px; }
+:host([data-mode="docked"]) .card { width: 100%; max-width: 340px; }
+header { cursor: grab; touch-action: none; user-select: none; }
+header:active { cursor: grabbing; }
 .card, .tagbar {
   position: relative; isolation: isolate; color: #f1f3f5; font-size: 13px; line-height: 1.35;
   background: linear-gradient(#141517, #141517) padding-box, ${HOT} border-box;

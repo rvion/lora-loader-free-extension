@@ -11,6 +11,9 @@
 - The tag bar sits in Civitai's bottom ad bar, replacing the ad while you
   are on a tag page, so it never covers Civitai's own buttons. Without an
   ad bar it floats at the bottom left.
+- On desktop model pages the card sits in Civitai's right rail, in place of
+  the rail ad. Drag it by its header to put it anywhere: the spot is saved,
+  and ↺ puts it back.
 - Much louder look: glowing gradients with a slow, GPU cheap pulse, green
   for "have it", red and orange for "get it".
 - File picker on the card when a version has several weight files (fp16,

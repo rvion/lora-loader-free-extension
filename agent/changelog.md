@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Card docks into civitai's right rail on desktop model pages (ad hidden
+  while docked), draggable by its header with the spot saved (`cardPos`),
+  ↺ resets. tagDock.ts became the generic dock.ts. Drag listens on window
+  because re-parenting out of the rail releases pointer capture.
+
 - Tag bar moved off the top (it covered civitai's filters) into civitai's
   bottom ad slot, own shadow host placed by tagDock.ts, ad hidden by a
   `:has` css rule only while docked. Floating bottom left as fallback.
