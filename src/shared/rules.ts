@@ -113,3 +113,30 @@ export function defaultSub(c: RuleCond): string {
 export function newRuleId(): string {
   return `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }
+
+/** civitai's model categories, in the order its category bar shows them */
+export const CIVITAI_CATEGORIES = [
+  "character",
+  "style",
+  "concept",
+  "clothing",
+  "base model",
+  "background",
+  "poses",
+  "tool",
+  "vehicle",
+  "assets",
+  "buildings",
+  "objects",
+  "animal",
+  "action",
+] as const;
+
+/** the category rules missing from `existing`, to append: `tag <category> → {base}/<category>` */
+export function missingCategoryRules(existing: Rule[]): Rule[] {
+  return CIVITAI_CATEGORIES.flatMap((cat) => {
+    const cond = { ...emptyCond(), tags: [cat] };
+    if (existing.some((r) => sameCond(r.cond, cond))) return [];
+    return [{ id: newRuleId(), cond, root: null, sub: defaultSub(cond) }];
+  });
+}

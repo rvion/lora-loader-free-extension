@@ -281,6 +281,14 @@ New rule from this page                  (or: Editing rule 2)
 
 Existing tag rules are migrated once into rules with a single tag condition.
 
+**Civitai categories** are seeded once, at the end of the list (lowest
+priority, so specific rules win), in civitai's order: character, style,
+concept, clothing, base model, background, poses, tool, vehicle, assets,
+buildings, objects, animal, action. Each is `tag <category> → last used root
+/ {base}/<category>` (spaces become dashes: `{base}/base-model`). The
+popover's **+ Categories** button adds back any category missing from the
+list; it never duplicates one (same conditions = same rule).
+
 ## The popup
 
 - LoRA Manager URL, default `http://127.0.0.1:8188`, with a Test button that

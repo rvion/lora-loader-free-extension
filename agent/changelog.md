@@ -5,6 +5,10 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Civitai category rules (character … action, `{base}/<category>`) seeded
+  once at the end of the list (flag categoriesSeeded), and a + Categories
+  button re-adds missing ones without duplicates.
+
 - Rules became multi condition (rules.ts: tags, name/tag has, base, type;
   AND across fields, OR inside), edited in a popover opened from a bar that
   is on every page (RulesSvc, RulesUi) and from the model page card; tag

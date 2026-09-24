@@ -112,6 +112,13 @@ const RulesPopover = obs(function RulesPopover(p: { st: RulesSvc; picks: Picks }
       <div className="popover-head">
         <span>Rules</span>
         <span>
+          <button
+            className="small"
+            onClick={() => void st.addCategories()}
+            title="Add a {base}/<category> rule for each civitai category missing from the list"
+          >
+            + Categories
+          </button>
           <button className="small" onClick={() => st.newRule()}>
             + New
           </button>

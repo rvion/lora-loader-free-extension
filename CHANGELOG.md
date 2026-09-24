@@ -26,6 +26,9 @@
   the default folder; {base} in the subfolder splits by base model. A bar on
   every Civitai page opens them in a popover, pre filled from the tag page
   or search you are on, with a live preview on every install chip.
+- A rule for each Civitai category (character, style, concept, …) is added
+  at first run, sending each to {base}/<category>; + Categories adds back
+  any you deleted.
 - Focus: show install chips only for the base models, types or tags you
   care about.
 - Install chips are see through, with a small pulsing dot, so the picture

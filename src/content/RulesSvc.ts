@@ -16,12 +16,14 @@ import {
   type RuleCond,
 } from "src/shared/rules.ts";
 import {
+  addCategoryRules,
   deleteRule,
   getLastFolder,
   getRules,
   moveRuleUp,
   onRulesChanged,
   saveRule,
+  seedCategoryRulesOnce,
 } from "src/shared/storage.ts";
 import { errorMessage } from "src/shared/watchDownload.ts";
 
@@ -57,7 +59,7 @@ export class RulesSvc {
       placement: false,
       isModelPage: false,
     });
-    void getRules().then((r) => this.setRules(r));
+    void seedCategoryRulesOnce().then(() => getRules().then((r) => this.setRules(r)));
     onRulesChanged((r) => this.setRules(r));
   }
 
@@ -225,6 +227,10 @@ export class RulesSvc {
     runInAction(() => {
       if (this.draft?.id === id) this.draft.id = null;
     });
+  }
+
+  addCategories(): Promise<number> {
+    return addCategoryRules();
   }
 
   moveUp(id: string): Promise<void> {

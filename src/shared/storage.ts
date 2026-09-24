@@ -1,6 +1,12 @@
 import type { LmPrefix } from "src/shared/civitai.ts";
 import { normalizeBaseUrl } from "src/shared/lmClient.ts";
-import { emptyCond, newRuleId, type Rule, type RuleCond } from "src/shared/rules.ts";
+import {
+  emptyCond,
+  missingCategoryRules,
+  newRuleId,
+  type Rule,
+  type RuleCond,
+} from "src/shared/rules.ts";
 
 export const DEFAULT_LM_URL = "http://127.0.0.1:8188";
 
@@ -99,6 +105,22 @@ export async function getRules(): Promise<Rule[]> {
   }));
   await chrome.storage.local.set({ rules2: migrated });
   return migrated;
+}
+
+/** appends the civitai category rules that are missing; returns how many were added */
+export async function addCategoryRules(): Promise<number> {
+  const rules = await getRules();
+  const add = missingCategoryRules(rules);
+  if (add.length > 0) await setRules([...rules, ...add]);
+  return add.length;
+}
+
+/** the first run seeds the category rules once; deleting them later is respected */
+export async function seedCategoryRulesOnce(): Promise<void> {
+  const got = await chrome.storage.local.get("categoriesSeeded");
+  if (got.categoriesSeeded === true) return;
+  await addCategoryRules();
+  await chrome.storage.local.set({ categoriesSeeded: true });
 }
 
 export async function setRules(rules: Rule[]): Promise<void> {

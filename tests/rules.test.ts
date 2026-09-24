@@ -4,6 +4,7 @@ import {
   defaultSub,
   emptyCond,
   matchRule,
+  missingCategoryRules,
   pageContext,
   sameCond,
   summarizeCond,
@@ -61,4 +62,19 @@ test("same conditions ignore order and case; summaries and default subfolders re
   );
   expect(defaultSub(cond({ words: ["monster girl"] }))).toBe("{base}/monster-girl");
   expect(defaultSub(emptyCond())).toBe("{base}");
+});
+
+test("category rules: one per civitai category, {base}/<category>, never duplicated", () => {
+  const seeded = missingCategoryRules([]);
+  expect(seeded).toHaveLength(14);
+  expect(seeded.map((r) => [r.cond.tags[0], r.sub]).slice(0, 5)).toEqual([
+    ["character", "{base}/character"],
+    ["style", "{base}/style"],
+    ["concept", "{base}/concept"],
+    ["clothing", "{base}/clothing"],
+    ["base model", "{base}/base-model"],
+  ]);
+  expect(seeded.every((r) => r.root == null)).toBe(true);
+  const kept = seeded.filter((r) => r.cond.tags[0] !== "style");
+  expect(missingCategoryRules(kept).map((r) => r.cond.tags[0])).toEqual(["style"]);
 });
