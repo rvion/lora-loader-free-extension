@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
@@ -33,25 +34,25 @@ export const Card = obs(function Card(p: { st: CardSt }) {
         <span className="brand" title="LoRA Manager">
           LM
         </span>
-        <span>
-          <DockButton place={st.placement} />
-          <button
-            className={st.server.isEditing ? "icon on" : "icon"}
-            onClick={() => st.server.toggleEditing()}
-            title="Server address"
-          >
-            ⚙
-          </button>
-          {!st.placement.isDocked && (
-            <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
-              –
-            </button>
-          )}
-        </span>
       </header>
       <DockMiss place={st.placement} />
-      {st.server.isOpen && <ServerField st={st} />}
       <Body st={st} />
+      <span className="tools">
+        <DockButton place={st.placement} />
+        <button
+          className={st.server.isEditing ? "icon on" : "icon"}
+          onClick={() => st.server.toggleEditing()}
+          title="Server address"
+        >
+          ⚙
+        </button>
+        {!st.placement.isDocked && (
+          <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
+            –
+          </button>
+        )}
+      </span>
+      {st.server.isOpen && <ServerField st={st} />}
     </div>
   );
 });
@@ -100,9 +101,7 @@ const Body = obs(function Body(p: { st: CardSt }) {
       <div className="title" title={m.name}>
         {m.name}
       </div>
-      <div className="sub">
-        {v.name} · {m.type}
-      </div>
+      <VersionChip st={st} />
       {st.page.prefix == null ? (
         <p className="muted">Type {m.type} is not handled.</p>
       ) : (
@@ -112,6 +111,60 @@ const Body = obs(function Body(p: { st: CardSt }) {
         </>
       )}
     </>
+  );
+});
+
+/** the version the card acts on: details on hover, every other version on click */
+const VersionChip = obs(function VersionChip(p: { st: CardSt }) {
+  const [open, setOpen] = useState(false);
+  const st = p.st;
+  const m = st.page.model.result;
+  const v = st.page.version;
+  if (m == null || v == null) return null;
+  const file = st.file.picked;
+  const tip = [
+    `Version: ${v.name}`,
+    `Base model: ${v.baseModel ?? "unknown"}`,
+    `Type: ${m.type}`,
+    `File: ${file != null ? st.file.label(file) : "none listed"}`,
+    m.versions.length > 1 ? `Click to pick another of ${m.versions.length} versions` : "",
+  ]
+    .filter((l) => l !== "")
+    .join("\n");
+  return (
+    <span className="vchip-wrap">
+      <button
+        className="vchip"
+        title={tip}
+        onClick={() => setOpen((o) => !o && m.versions.length > 1)}
+        onBlur={() => setOpen(false)}
+      >
+        {v.name}
+        {v.baseModel != null && <span className="vchip-base">{v.baseModel}</span>}
+        {m.versions.length > 1 && " ▾"}
+      </button>
+      {open && (
+        <ul className="combo-list vlist" role="listbox">
+          {m.versions.map((ver) => (
+            <li
+              key={ver.id}
+              role="option"
+              aria-selected={ver.id === v.id}
+              className={ver.id === v.id ? "hi" : undefined}
+              // mousedown: the button blur would close the list before a click lands
+              onMouseDown={(e) => {
+                e.preventDefault();
+                st.pickVersion(ver.id);
+                setOpen(false);
+              }}
+            >
+              {ver.name}
+              {ver.baseModel != null && <span className="muted"> · {ver.baseModel}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </span>
   );
 });
 

@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Docked row reworked from the owner's screenshot: no title (the page shows
+  it), version chip (hover details, click to switch version in the card
+  only, pickVersion), tools moved last, subfolder combobox styled as a select
+  that lists every folder on open and filters only once you type.
+
 - Subfolder combobox (SubfolderBox, folderOptions) on the card and the tag
   bar, free text with a "new folder" row. In library now shows where:
   `loras › krea2/styles` + file name + Copy (downloadedFiles from

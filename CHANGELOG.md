@@ -17,8 +17,10 @@
   then they fade out.
 - Much louder look: glowing gradients with a slow, GPU cheap pulse, green
   for "have it", red and orange for "get it".
-- Subfolder picker that lists your existing folders as you type and still
-  takes any new path.
+- Subfolder picker that works like a select: it lists every folder LoRA
+  Manager knows, filters as you type, and still takes any new path.
+- Version chip on the card: hover for base model and file, click to pick
+  another version to download.
 - In library, the card shows where: `loras › krea2/styles` and the file
   name, with a Copy button. Listing chips list the file names on hover.
 - File picker on the card when a version has several weight files (fp16,

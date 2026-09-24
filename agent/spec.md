@@ -5,8 +5,16 @@
 Placement: see "Dock and free mode" below. Its dock is a full width strip
 right under civitai's header (the same spot as the tag bar, which never
 shows on a model page): one compact row centered like the tag bar, title,
-status, file, `[root] / [subfolder]` without field labels, then Download
-and Mark right after them. It stays when the window shrinks, mobile included.
+`LM` badge, version chip, status, file, `[root] / [subfolder]` without field
+labels, Download, Mark, then the tools (⇱ ⇲ ⚙) last. No title: the page
+shows it right below. The floating card keeps its title and puts the tools
+top right.
+
+**Version chip** (`v1.0 ▾`): hover shows version, base model, type and the
+file that will download. Click lists every version of the model (name and
+base model); picking one points the card at it (status, where, file,
+download) without reloading civitai's page. Changing the version on
+civitai's page (the url) takes over again. It stays when the window shrinks, mobile included.
 Floating default: bottom right, as a vertical card.
 
 Appears on `https://civitai.com/models/<id>` and
@@ -95,8 +103,10 @@ under `prefers-reduced-motion`.
 
 ## Subfolder combobox (card and tag bar)
 
-One component for every subfolder field. Typing filters LoRA Manager's
-existing subfolders (substring, case insensitive, deeper folders indented);
+One component for every subfolder field, styled as a select with a ▾.
+Opening it (click, focus, ▾) lists every folder LoRA Manager knows, the
+current value highlighted, whatever the field holds. Typing then filters
+LoRA Manager's existing subfolders (substring, case insensitive, deeper folders indented);
 ↑ ↓ move, Enter picks, Esc closes, a click picks. The first row is "(root)".
 Free text is always allowed: when the typed value matches no existing
 folder, the first row reads `＋ new folder: foo/bar/baz` and the field shows

@@ -14,7 +14,8 @@ ${GLOW_CSS}
 :host([data-mode="docked"]) .card { width: auto; max-width: 100%; display: flex; flex-wrap: wrap;
   align-items: center; gap: 4px 10px; padding: 4px 10px; }
 :host([data-mode="docked"]) .card > header { margin: 0; gap: 6px; }
-:host([data-mode="docked"]) .card > .title { max-width: 280px; }
+:host([data-mode="docked"]) .card > .title { display: none; }
+:host([data-mode="docked"]) .card > .tools { order: 99; }
 :host([data-mode="docked"]) .card > .sub { margin: 0; }
 :host([data-mode="docked"]) .card > p { margin: 0; }
 :host([data-mode="docked"]) .card > .folder { display: flex; align-items: center; gap: 6px; margin: 0; }
@@ -105,10 +106,24 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 :host([data-mode="docked"]) .sep { display: inline; }
 /* inside a glowing frame the frame is enough: buttons keep the gradient, lose the halo */
 .card .lmf-hot::after, .card .lmf-cool::after, .tagbar .lmf-hot::after, .tagbar .lmf-cool::after { display: none; }
+/* tools: top right on the floating card, last item on the docked row */
+.card { position: relative; }
+.tools { display: inline-flex; align-items: center; gap: 2px; }
+:host(:not([data-mode="docked"])) .card > .tools { position: absolute; top: 6px; right: 6px; }
+/* version chip */
+.vchip-wrap { position: relative; display: inline-block; }
+.vchip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; background: #25262b; border: 1px solid #5c5f66; }
+.vchip:hover { border-color: #ffa94d; }
+.vchip-base { font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; background: #373a40; color: #ffd8a8; }
+.vlist { min-width: 240px; }
 /* subfolder combobox */
 .combo { position: relative; display: inline-block; width: 100%; }
-.combo input { padding-right: 38px; }
-.newtag { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); pointer-events: none;
+.combo input { padding-right: 52px; cursor: pointer; }
+.combo input:focus { cursor: text; }
+.chev { position: absolute; right: 7px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  font-size: 11px; color: #adb5bd; }
+.newtag { position: absolute; right: 20px; top: 50%; transform: translateY(-50%); pointer-events: none;
   font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; background: ${HOT}; color: #fff; }
 .combo-list { position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 2px); margin: 0; padding: 4px 0;
   list-style: none; max-height: 260px; overflow-y: auto; min-width: 220px;

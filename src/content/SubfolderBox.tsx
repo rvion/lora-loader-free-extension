@@ -12,8 +12,25 @@ export function SubfolderBox(p: {
 }) {
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
-  const rows = folderOptions(p.folders, p.value);
-  const isNew = p.value.trim() !== "" && rows[0]?.isNew === true;
+  // opening lists every folder, like a select; typing starts filtering
+  const [filtering, setFiltering] = useState(false);
+  const typed = p.value.trim();
+  const isNew = typed !== "" && !p.folders.some((f) => f.toLowerCase() === typed.toLowerCase());
+  const rows = filtering
+    ? folderOptions(p.folders, p.value)
+    : [
+        ...(isNew ? [{ value: typed, depth: 0, isNew: true }] : []),
+        ...folderOptions(p.folders, ""),
+      ];
+  const current = Math.max(
+    0,
+    rows.findIndex((r) => r.value.toLowerCase() === typed.toLowerCase()),
+  );
+  const openList = () => {
+    setOpen(true);
+    setFiltering(false);
+    setHi(current);
+  };
   const pick = (v: string) => {
     p.onChange(v);
     setOpen(false);
@@ -24,19 +41,20 @@ export function SubfolderBox(p: {
         value={p.value}
         placeholder="(root)"
         spellCheck={false}
-        onFocus={() => {
-          setOpen(true);
-          setHi(0);
+        onFocus={openList}
+        onMouseDown={() => {
+          if (!open) openList();
         }}
         onBlur={() => setOpen(false)}
         onChange={(e) => {
           p.onChange(e.currentTarget.value);
           setOpen(true);
+          setFiltering(true);
           setHi(0);
         }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown") {
-            setOpen(true);
+            if (!open) openList();
             setHi((h) => Math.min(h + 1, rows.length - 1));
             e.preventDefault();
           } else if (e.key === "ArrowUp") {
@@ -53,6 +71,9 @@ export function SubfolderBox(p: {
         }}
       />
       {isNew && <span className="newtag">new</span>}
+      <span className="chev" aria-hidden="true">
+        ▾
+      </span>
       {open && rows.length > 0 && (
         <ul className="combo-list" role="listbox">
           {rows.map((r, i) => (

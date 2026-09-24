@@ -55,7 +55,7 @@ test("model answer keeps id, name, type and versions", () => {
     name: "x",
     type: "LORA",
     tags: [],
-    versions: [{ id: 2, name: "v1", files: [] }],
+    versions: [{ id: 2, name: "v1", baseModel: null, files: [] }],
   });
   expect(() => parseCivitaiModel({ error: "nope" })).toThrow();
 });
@@ -85,6 +85,7 @@ test("weight files keep only weights, primary first", () => {
   const files = weightFiles({
     id: 1,
     name: "v1",
+    baseModel: null,
     files: [
       file({ id: 1 }),
       file({ id: 2, type: "Training Data" }),
@@ -111,10 +112,12 @@ test("model answer carries version files with their metadata", () => {
       {
         id: 2,
         name: "v1",
+        baseModel: "Flux.1 D",
         files: [{ id: 9, name: "a", type: "Model", primary: true, metadata: { fp: "fp16" } }],
       },
     ],
   });
+  expect(m.versions[0]?.baseModel).toBe("Flux.1 D");
   expect(m.versions[0]?.files[0]).toMatchObject({ id: 9, primary: true, fp: "fp16", format: null });
 });
 

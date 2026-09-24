@@ -101,6 +101,15 @@ export class CardSt {
     void this.page.load().then(() => this.refreshForVersion());
   }
 
+  /** points the card at another version without touching civitai's url */
+  pickVersion(versionId: number): void {
+    const ref = this.page.ref;
+    if (ref == null || !this.page.setRef({ ...ref, versionId })) return;
+    this.download.reset();
+    this.file.reset();
+    void this.refreshForVersion();
+  }
+
   async refreshForVersion(): Promise<void> {
     const m = this.page.model.result;
     const v = this.page.version;
@@ -238,6 +247,7 @@ export class PageSvc {
       m.versions.find((v) => v.id === wanted) ?? {
         id: wanted,
         name: `version ${wanted}`,
+        baseModel: null,
         files: [],
       }
     );

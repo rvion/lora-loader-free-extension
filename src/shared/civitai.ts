@@ -17,7 +17,12 @@ export type CivitaiFile = {
   format: string | null;
 };
 
-export type CivitaiVersion = { id: number; name: string; files: CivitaiFile[] };
+export type CivitaiVersion = {
+  id: number;
+  name: string;
+  baseModel: string | null;
+  files: CivitaiFile[];
+};
 
 export type CivitaiModel = {
   id: number;
@@ -126,6 +131,7 @@ export function parseCivitaiModel(json: unknown): CivitaiModel {
           {
             id: r.id,
             name: typeof r.name === "string" ? r.name : String(r.id),
+            baseModel: typeof r.baseModel === "string" && r.baseModel !== "" ? r.baseModel : null,
             files: parseFiles(r.files),
           },
         ]
