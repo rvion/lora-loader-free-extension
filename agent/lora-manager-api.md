@@ -7,8 +7,8 @@ server, default `http://127.0.0.1:8188`.
 | call | used for | answer |
 |---|---|---|
 | `GET /api/lm/version-info` | popup Test | `{ success, version, … }` |
-| `GET /api/lm/check-model-exists?modelId=&modelVersionId=` | card status | `{ success, exists, modelType }` |
-| `GET /api/lm/check-models-exist?modelIds=1,2,3` | listing badges | `{ success, results: [{ modelId, modelType, versions: [...] }] }`, `versions` empty when absent |
+| `GET /api/lm/check-model-exists?modelId=&modelVersionId=` | card status | `{ success, exists, modelType, downloadedFiles: [{ fileId, fileName, filePath }] }` (files only when exists) |
+| `GET /api/lm/check-models-exist?modelIds=1,2,3` | listing badges | `{ success, results: [{ modelId, modelType, versions: [{ versionId, name, fileName }] }] }`, `versions` empty when absent, no paths |
 | `GET /api/lm/<prefix>/roots` | root select | `{ success, roots: string[] }` |
 | `GET /api/lm/<prefix>/folders` | subfolder suggestions | `{ folders: string[] }` (relative, `""` is the root) |
 | `POST /api/lm/download-model` | download | body `{ model_id, model_version_id, model_root, relative_path, download_id, file_params? }`; `file_params: { id }` picks one Civitai file (`_resolve_target_file`), resolves at the END of the download |

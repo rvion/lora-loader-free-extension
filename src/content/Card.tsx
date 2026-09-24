@@ -2,6 +2,8 @@ import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
+import { SubfolderBox } from "src/content/SubfolderBox.tsx";
+import { shortRoot, whereInLibrary } from "src/shared/paths.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
 export const CardShell = obs(function CardShell(p: { st: CardSt }) {
@@ -28,7 +30,9 @@ export const Card = obs(function Card(p: { st: CardSt }) {
   return (
     <div className="card">
       <header onPointerDown={(e) => startDrag(e, st.placement)} title="Drag to move">
-        <span className="brand">LoRA Manager</span>
+        <span className="brand" title="LoRA Manager">
+          LM
+        </span>
         <span>
           <DockButton place={st.placement} />
           <button
@@ -38,9 +42,11 @@ export const Card = obs(function Card(p: { st: CardSt }) {
           >
             ⚙
           </button>
-          <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
-            –
-          </button>
+          {!st.placement.isDocked && (
+            <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
+              –
+            </button>
+          )}
         </span>
       </header>
       <DockMiss place={st.placement} />
@@ -122,8 +128,19 @@ const LibraryLine = obs(function LibraryLine(p: { st: CardSt }) {
       </p>
     );
   if (s.isRunning && s.result == null) return <p className="muted">Checking library…</p>;
-  if (s.result?.exists === true)
-    return <p className="status lmf-cool">✓ In library ({s.result.modelType})</p>;
+  if (s.result?.exists === true) {
+    const roots = st.folder.choices.result?.roots ?? [];
+    return (
+      <>
+        <p className="status lmf-cool" title={`LoRA Manager type: ${s.result.modelType}`}>
+          ✓ In library
+        </p>
+        {s.result.files.map((f) => (
+          <WhereLine key={f.filePath} path={f.filePath} roots={roots} />
+        ))}
+      </>
+    );
+  }
   return <p className="muted">Not in library</p>;
 });
 
@@ -177,6 +194,27 @@ const FilePicker = obs(function FilePicker(p: { st: CardSt }) {
   );
 });
 
+/** "loras › krea2/styles" then the file name: the root by its own folder name, then the path inside it */
+function WhereLine(p: { path: string; roots: string[] }) {
+  const w = whereInLibrary(p.path, p.roots);
+  return (
+    <p className="where" title={p.path}>
+      <span className="where-dir">
+        {w.rootName}
+        {w.dir !== "" && <> › {w.dir}</>}
+      </span>
+      <span className="where-file">{w.fileName}</span>
+      <button
+        className="link"
+        onClick={() => void navigator.clipboard.writeText(p.path)}
+        title="Copy the full path"
+      >
+        Copy
+      </button>
+    </p>
+  );
+}
+
 const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
   const f = p.st.folder;
   const c = f.choices;
@@ -202,27 +240,16 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
       </label>
       <label>
         Subfolder
-        <input
-          list="lmf-subfolders"
-          placeholder="(root)"
+        <SubfolderBox
           value={f.pick.sub}
-          onChange={(e) => f.setSub(e.currentTarget.value)}
+          folders={c.result?.folders ?? []}
+          onChange={(v) => f.setSub(v)}
         />
-        <datalist id="lmf-subfolders">
-          {(c.result?.folders ?? []).map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
       </label>
       {f.via != null && <p className="rule">Folder from rule: {f.via}</p>}
     </div>
   );
 });
-
-function shortRoot(root: string): string {
-  const parts = root.split(/[\\/]/).filter((s) => s !== "");
-  return parts.length <= 2 ? root : `…/${parts.slice(-2).join("/")}`;
-}
 
 export const TagBar = obs(function TagBar(p: { st: CardSt }) {
   const t = p.st.tag;
@@ -263,14 +290,11 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
           ))}
         </select>
         <span>/</span>
-        <input
+        <SubfolderBox
           value={t.draftSub}
-          placeholder="(root)"
-          spellCheck={false}
-          onChange={(e) => t.setDraftSub(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void t.save();
-          }}
+          folders={t.roots.result?.folders ?? []}
+          onChange={(v) => t.setDraftSub(v)}
+          onEnter={() => void t.save()}
         />
         {t.isDirty ? (
           <button className="lmf-hot" onClick={() => void t.save()}>
@@ -285,9 +309,11 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
           </button>
         )}
         <DockButton place={t.placement} />
-        <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
-          –
-        </button>
+        {!t.placement.isDocked && (
+          <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
+            –
+          </button>
+        )}
         {t.roots.error != null && <span className="error">{t.roots.error.message}</span>}
         {t.saveError != null && <span className="error">{t.saveError}</span>}
         <DockMiss place={t.placement} />

@@ -72,13 +72,13 @@ export type SavedPlacement = { mode: "dock" | "free"; pos: ScreenPos | null };
 export type OverlayId = "card" | "tag";
 
 export async function getPlacement(id: OverlayId): Promise<SavedPlacement | null> {
-  const key = `placement:${id}`;
+  const key = `placement2:${id}`;
   const got = await chrome.storage.local.get(key);
   return (got[key] as SavedPlacement | undefined) ?? null;
 }
 
 export async function setPlacement(id: OverlayId, p: SavedPlacement): Promise<void> {
-  await chrome.storage.local.set({ [`placement:${id}`]: p });
+  await chrome.storage.local.set({ [`placement2:${id}`]: p });
 }
 
 export type TagRule = {

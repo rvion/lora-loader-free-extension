@@ -30,11 +30,28 @@ test("base url accepts a bare lan ip and rejects garbage", () => {
   expect(() => normalizeBaseUrl("ftp://box")).toThrow();
 });
 
-test("library status reads exists and model type", async () => {
+test("library status reads exists, model type and where the files are", async () => {
   const lm = fakeLm({
-    "/api/lm/check-model-exists": { body: { success: true, exists: true, modelType: "lora" } },
+    "/api/lm/check-model-exists": {
+      body: {
+        success: true,
+        exists: true,
+        modelType: "lora",
+        downloadedFiles: [
+          { fileId: 9, fileName: "a.safetensors", filePath: "/m/loras/style/a.safetensors" },
+          { fileId: null, filePath: "/m/loras/b.safetensors" },
+        ],
+      },
+    },
   });
-  expect(await lm.client.libraryStatus(10, 20)).toEqual({ exists: true, modelType: "lora" });
+  expect(await lm.client.libraryStatus(10, 20)).toEqual({
+    exists: true,
+    modelType: "lora",
+    files: [
+      { fileName: "a.safetensors", filePath: "/m/loras/style/a.safetensors" },
+      { fileName: "b.safetensors", filePath: "/m/loras/b.safetensors" },
+    ],
+  });
   expect(lm.calls[0]?.url).toBe(
     "http://127.0.0.1:8188/api/lm/check-model-exists?modelId=10&modelVersionId=20",
   );
@@ -90,14 +107,14 @@ test("library batch keeps only models with versions in the library", async () =>
       body: {
         success: true,
         results: [
-          { modelId: 1, modelType: "lora", versions: [{}, {}] },
+          { modelId: 1, modelType: "lora", versions: [{ fileName: "a.safetensors" }, {}] },
           { modelId: 2, modelType: null, versions: [] },
         ],
       },
     },
   });
   expect(await lm.client.libraryBatch([1, 2])).toEqual({
-    "1": { modelType: "lora", versionCount: 2 },
+    "1": { modelType: "lora", versionCount: 2, fileNames: ["a.safetensors"] },
   });
   expect(lm.calls[0]?.url).toBe("http://127.0.0.1:8188/api/lm/check-models-exist?modelIds=1,2");
 });

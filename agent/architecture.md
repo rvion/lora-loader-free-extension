@@ -117,5 +117,5 @@ shadow root (card, tag bar) and the page stylesheet (listing overlays).
 | `lastFolder:<prefix>` | local | `{ root, sub }` |
 | `marked` | local | `MarkedItem[]` |
 | `tagRules` | local | `TagRule[]` (order = priority) |
-| `placement:card`, `placement:tag` | local | `{ mode: "dock" \| "free", pos: { x, y } \| null }` |
+| `placement2:card`, `placement2:tag` (v1 keys dropped so everyone starts docked) | local | `{ mode: "dock" \| "free", pos: { x, y } \| null }` |
 | `active` | session | `Record<versionId, downloadId>` |

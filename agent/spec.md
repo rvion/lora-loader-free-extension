@@ -24,7 +24,7 @@ Status line, one of:
 | state | shown |
 |---|---|
 | checking | "Checking library…" |
-| in library | green "In library" + LoRA Manager type (lora, checkpoint, …) |
+| in library | green "In library" + LoRA Manager type, then **where**: each local file of that version as `root › sub/folder/file.safetensors` (root shortened to its last two segments), full path on hover, a Copy button per file |
 | not in library | "Not in library" |
 | downloading | progress bar with percent, or the post-transfer stage text |
 | unreachable | red "LoRA Manager unreachable at <url>" + hint to open the popup |
@@ -39,8 +39,7 @@ Controls (hidden when in library):
   The pick is sent as `file_params: { id }` and kept on a marked item.
 
 - **Folder picker**: a root select (from LoRA Manager's roots for that model
-  type) and a subfolder field with suggestions from existing subfolders.
-  Free text creates a new subfolder. The last choice is remembered per model
+  type) and a subfolder **combobox** (below). The last choice is remembered per model
   type and pre-filled.
 - **Download**: starts the download into the picked root + subfolder.
 - **Mark** / **Unmark**: adds or removes this version (with the picked
@@ -50,7 +49,8 @@ Controls (hidden when in library):
 
 Each overlay is in one of two modes, saved per overlay:
 
-- **dock** (default): inserted into civitai's page at its dock spot. If the
+- **dock** (default, for everyone: saved spots from before are dropped once):
+  inserted into civitai's page at its dock spot. If the
   page has no such spot (mobile, another layout, civitai changed its
   markup), it floats instead.
 - **free**: floating over the page where you dropped it, else its default
@@ -61,6 +61,7 @@ Controls, in the overlay's header:
   (free mode, at the drop spot). The spot stays on screen when the window
   shrinks.
 - **⇱** (shown while docked): undock to free mode.
+- **–** fold to a pill: only while floating (a docked strip has no fold).
 - **⇲** (shown while floating): try docking again. When the page has no
   dock spot, a short "nothing to dock into on this page" note shows for a
   few seconds.
@@ -76,7 +77,9 @@ the next pass. No setting: always on.
 
 ## Look: impossible to miss
 
-Civitai is visually loud, so everything the extension adds is louder:
+Civitai is visually loud, so everything the extension adds stands out, kept
+compact (tight padding, 1.25 line height, a thin 2px frame, a soft halo that
+pulses between 20% and 70%). The card's label is a small "LM" badge:
 - actionable things (⬇ Install, Download, the card frame, the tag bar): a
   red → orange → yellow gradient, white bold text, and a halo that pulses
   slowly;
@@ -87,6 +90,17 @@ The pulse is an `opacity` animation on a `::after` halo layer, which the
 compositor runs without layout or paint (no box-shadow animation). It stops
 under `prefers-reduced-motion`.
 
+## Subfolder combobox (card and tag bar)
+
+One component for every subfolder field. Typing filters LoRA Manager's
+existing subfolders (substring, case insensitive, deeper folders indented);
+↑ ↓ move, Enter picks, Esc closes, a click picks. The first row is "(root)".
+Free text is always allowed: when the typed value matches no existing
+folder, the first row reads `＋ new folder: foo/bar/baz` and the field shows
+a small "new" tag. Any depth works: LoRA Manager creates every missing level
+when the download starts (`os.makedirs`), and rejects a path that escapes
+the root (`../x`) with an error shown on the card.
+
 ## Listing cards (every civitai page)
 
 Every model card (a link to `/models/<id>` that holds an image or video:
@@ -96,7 +110,7 @@ card), once LM has answered for it:
 
 | state | shown |
 |---|---|
-| in library | green `✓ LM`, or `✓ LM ×N` when N versions are |
+| in library | green `✓ LM`, or `✓ LM ×N` when N versions are. Hover lists the local file names |
 | not in library | glowing `⬇ Install` button |
 | installing | `⬇ 42%`, or the stage text (`queued`, …) |
 | failed | red `✕ failed`, the error as tooltip. Click to retry |

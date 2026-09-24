@@ -197,7 +197,9 @@ export function chipFor(
   return {
     cls: "lmf-cool",
     text: presence.versionCount > 1 ? `✓ LM ×${presence.versionCount}` : "✓ LM",
-    title: `In your LoRA Manager library (${presence.modelType})`,
+    title: [`In your LoRA Manager library (${presence.modelType}):`, ...presence.fileNames].join(
+      "\n",
+    ),
   };
 }
 

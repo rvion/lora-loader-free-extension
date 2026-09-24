@@ -5,6 +5,12 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Subfolder combobox (SubfolderBox, folderOptions) on the card and the tag
+  bar, free text with a "new folder" row. In library now shows where:
+  `loras › krea2/styles` + file name + Copy (downloadedFiles from
+  check-model-exists, whereInLibrary). Toned down look, "LM" badge, no fold
+  when docked, placement keys bumped so everyone starts docked.
+
 - AdSvc removes ads with a visible red ring and fade. The card docks under
   the header as a one row strip: the right rail vanished below civitai's
   desktop breakpoint and took the docked card with it. placeHost keeps any

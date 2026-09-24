@@ -17,6 +17,10 @@
   then they fade out.
 - Much louder look: glowing gradients with a slow, GPU cheap pulse, green
   for "have it", red and orange for "get it".
+- Subfolder picker that lists your existing folders as you type and still
+  takes any new path.
+- In library, the card shows where: `loras › krea2/styles` and the file
+  name, with a Copy button. Listing chips list the file names on hover.
 - File picker on the card when a version has several weight files (fp16,
   pruned, …). Marked items keep the pick.
 

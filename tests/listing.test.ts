@@ -14,8 +14,15 @@ test("ids are sent in chunks", () => {
 test("chip: nothing until LM answered, install when absent, count when several", () => {
   expect(chipFor(undefined, undefined)).toBeNull();
   expect(chipFor(null, undefined)).toMatchObject({ cls: "lmf-hot", text: "⬇ Install" });
-  expect(chipFor({ modelType: "lora", versionCount: 1 }, undefined)?.text).toBe("✓ LM");
-  expect(chipFor({ modelType: "lora", versionCount: 3 }, undefined)?.text).toBe("✓ LM ×3");
+  expect(
+    chipFor({ modelType: "lora", versionCount: 1, fileNames: ["a.safetensors"] }, undefined),
+  ).toMatchObject({
+    text: "✓ LM",
+    title: "In your LoRA Manager library (lora):\na.safetensors",
+  });
+  expect(chipFor({ modelType: "lora", versionCount: 3, fileNames: [] }, undefined)?.text).toBe(
+    "✓ LM ×3",
+  );
 });
 
 test("chip: a running job wins over presence, a failure is retryable", () => {

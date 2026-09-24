@@ -1,12 +1,19 @@
 // the only module that knows LoRA Manager's wire shapes (agent/lora-manager-api.md)
 import type { LmPrefix } from "src/shared/civitai.ts";
 
-export type LibraryStatus = { exists: false } | { exists: true; modelType: string };
+export type LocalFile = { fileName: string; filePath: string };
+
+export type LibraryStatus =
+  | { exists: false }
+  | { exists: true; modelType: string; files: LocalFile[] };
 
 export type FolderChoices = { roots: string[]; folders: string[] };
 
 /** models present in the library, by civitai model id. absent ids are simply missing */
-export type LibraryBatch = Record<string, { modelType: string; versionCount: number }>;
+export type LibraryBatch = Record<
+  string,
+  { modelType: string; versionCount: number; fileNames: string[] }
+>;
 
 export type DownloadRequest = {
   downloadId: string;
@@ -97,9 +104,20 @@ export class LmClient {
     const q = new URLSearchParams({ modelId: String(modelId), modelVersionId: String(versionId) });
     const o = await this.getJson(`/api/lm/check-model-exists?${q}`);
     if (o.success !== true) throw new Error(`LoRA Manager: ${errorText(o)}`);
-    return o.exists === true
-      ? { exists: true, modelType: String(o.modelType ?? "model") }
-      : { exists: false };
+    if (o.exists !== true) return { exists: false };
+    const files = (Array.isArray(o.downloadedFiles) ? o.downloadedFiles : []).flatMap(
+      (f: unknown) => {
+        if (typeof f !== "object" || f == null) return [];
+        const r = f as Record<string, unknown>;
+        if (typeof r.filePath !== "string") return [];
+        const fileName =
+          typeof r.fileName === "string"
+            ? r.fileName
+            : (r.filePath.split(/[\\/]/).pop() ?? r.filePath);
+        return [{ fileName, filePath: r.filePath }];
+      },
+    );
+    return { exists: true, modelType: String(o.modelType ?? "model"), files };
   }
 
   async libraryBatch(modelIds: number[]): Promise<LibraryBatch> {
@@ -115,6 +133,11 @@ export class LmClient {
         out[String(row.modelId)] = {
           modelType: String(row.modelType ?? "model"),
           versionCount: versions.length,
+          fileNames: versions.flatMap((v: unknown) => {
+            const name =
+              typeof v === "object" && v != null ? (v as { fileName?: unknown }).fileName : null;
+            return typeof name === "string" && name !== "" ? [name] : [];
+          }),
         };
     }
     return out;

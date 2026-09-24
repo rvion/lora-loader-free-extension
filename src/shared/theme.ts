@@ -4,24 +4,24 @@ export const HOT = "linear-gradient(135deg, #ff1744 0%, #ff5722 45%, #ff9100 75%
 export const COOL = "linear-gradient(135deg, #00c853 0%, #00bfa5 55%, #00b0ff 100%)";
 export const DANGER = "linear-gradient(135deg, #b71c1c 0%, #e53935 100%)";
 
-const HOT_HALO = "0 0 12px 3px rgba(255, 23, 68, 0.9), 0 0 26px 8px rgba(255, 145, 0, 0.55)";
-const COOL_HALO = "0 0 10px 3px rgba(0, 200, 83, 0.85), 0 0 22px 6px rgba(0, 176, 255, 0.45)";
+const HOT_HALO = "0 0 7px 2px rgba(255, 23, 68, 0.8), 0 0 14px 4px rgba(255, 145, 0, 0.4)";
+const COOL_HALO = "0 0 6px 2px rgba(0, 200, 83, 0.75), 0 0 12px 3px rgba(0, 176, 255, 0.35)";
 
 /** `sel` gets the gradient, a white edge and the pulsing halo */
 function glow(sel: string, gradient: string, halo: string): string {
   return `
 ${sel} { position: relative; background: ${gradient} !important; color: #fff !important;
-  border: 2px solid rgba(255,255,255,.9) !important; text-shadow: 0 1px 2px rgba(0,0,0,.45); isolation: isolate; }
-${sel}::after { content: ""; position: absolute; inset: -3px; border-radius: inherit; box-shadow: ${halo};
-  opacity: .35; animation: lmf-pulse 1.4s ease-in-out infinite; pointer-events: none; will-change: opacity; z-index: -1; }`;
+  border: 1px solid rgba(255,255,255,.75) !important; text-shadow: 0 1px 2px rgba(0,0,0,.45); isolation: isolate; }
+${sel}::after { content: ""; position: absolute; inset: -2px; border-radius: inherit; box-shadow: ${halo};
+  opacity: .3; animation: lmf-pulse 1.8s ease-in-out infinite; pointer-events: none; will-change: opacity; z-index: -1; }`;
 }
 
 export const GLOW_CSS = `
-@keyframes lmf-pulse { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+@keyframes lmf-pulse { 0%, 100% { opacity: .2; } 50% { opacity: .7; } }
 ${glow(".lmf-hot", HOT, HOT_HALO)}
 ${glow(".lmf-cool", COOL, COOL_HALO)}
 ${glow(".lmf-danger", DANGER, HOT_HALO)}
-@media (prefers-reduced-motion: reduce) { .lmf-hot::after, .lmf-cool::after, .lmf-danger::after { animation: none; opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .lmf-hot::after, .lmf-cool::after, .lmf-danger::after { animation: none; opacity: .5; } }
 `;
 
 /** injected once into civitai's own document for the listing overlays */
@@ -44,5 +44,5 @@ ${GLOW_CSS}
 @keyframes lmf-ad-out { 0%, 45% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9); } }
 .lmf-ad-gone { display: none !important; }
 /* docked strips: their own rows in civitai's header/content flex column */
-#lmf-tagbar-host, #lora-manager-free-card { flex: none; }
+#lmf-tagbar-host, #lora-manager-free-card { flex: none; position: relative; z-index: 198; }
 `;
