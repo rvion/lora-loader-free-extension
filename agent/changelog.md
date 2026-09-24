@@ -5,6 +5,12 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Dock and free mode for both overlays (PlacementSvc, Movable, generic
+  placeHost with append or insert after). The tag bar docks as its own strip
+  after `#main header`, checked against civitai's served html: header and
+  content are flex column siblings and the content scrolls in its own
+  `.scroll-area`. The bottom ad bar dock is gone (worse spot than the top).
+
 - Card docks into civitai's right rail on desktop model pages (ad hidden
   while docked), draggable by its header with the spot saved (`cardPos`),
   ↺ resets. tagDock.ts became the generic dock.ts. Drag listens on window

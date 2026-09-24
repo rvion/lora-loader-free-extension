@@ -16,18 +16,16 @@ import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts"
 import type { LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { ListingSvc } from "src/content/ListingSvc.ts";
+import { PlacementSvc } from "src/content/PlacementSvc.ts";
 import { TagSvc } from "src/content/TagSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
-  getCardPos,
   getMarked,
   getSettings,
   onMarkedChanged,
   onSettingsChanged,
   saveLmUrl,
-  setCardPos,
-  type CardPos,
   setLastFolder,
   setMarked,
   type FolderPick,
@@ -55,7 +53,7 @@ export class CardSt {
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
     this.listing = new ListingSvc();
-    this.placement = new PlacementSvc();
+    this.placement = new PlacementSvc("card");
     this.tag = new TagSvc();
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
@@ -109,30 +107,6 @@ export class CardSt {
       this.folder.load(prefix, m.tags),
       this.download.resume(m.id, v.id),
     ]);
-  }
-}
-
-/** where the user dragged the card. null: the default place (docked in the rail, else bottom right) */
-export class PlacementSvc {
-  pos: CardPos | null = null;
-
-  constructor() {
-    makeAutoObservable(this);
-    void getCardPos().then((p) => this.setPos(p));
-  }
-
-  /** live while dragging; `commit` persists the drop */
-  setPos(p: CardPos | null): void {
-    this.pos = p;
-  }
-
-  commit(): void {
-    void setCardPos(this.pos);
-  }
-
-  reset(): void {
-    this.pos = null;
-    void setCardPos(null);
   }
 }
 

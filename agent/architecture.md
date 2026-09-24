@@ -66,20 +66,23 @@ file → `suggestFolder` → `startDownload` → `watchDownload`.
 
 ## Placement (card and tag bar)
 
-Both overlays have their own shadow host, placed by `placeHost`
-(`src/content/dock.ts`) on the 500 ms url tick and, for the card, at once
-when its drag state changes (a mobx reaction). Modes, as `data-mode` on the
-host, styled with `:host([data-mode=…])`:
+Each overlay has its own shadow host and a `PlacementSvc`
+(`src/content/PlacementSvc.ts`: `mode` dock|free, free `pos`, the `actual`
+host mode, the dock miss note). `placeHost` (`src/content/dock.ts`) puts
+the host in the page, returns the actual mode, and runs on the 500 ms url
+tick and at once on a mode or pos change (a mobx reaction per overlay).
+`Movable` (`src/content/Movable.tsx`) is the positioned box plus the drag.
 
-| overlay | docked into | else |
+| overlay | dock | floating default |
 |---|---|---|
-| card (`#lora-manager-free-card`) | right rail `[class*="-module__"][class*="__rail"]` | `custom` at the saved drag spot, or `floating` bottom right |
-| tag bar (`#lmf-tagbar-host`) | bottom ad bar `[data-adhesive-ad]` | `floating` bottom left |
+| card (`#lora-manager-free-card`) | appended into the right rail `[class*="-module__"][class*="__rail"]` | bottom right |
+| tag bar (`#lmf-tagbar-host`) | inserted after `#main header` (header and content are siblings in a flex column, content scrolls in its own `.scroll-area`) | bottom left |
 
-A saved drag spot beats docking. The ads are hidden by page css rules of the
-shape `slot:has(> #host) > :not(#host)`, so civitai re-rendering an ad
-cannot bring it back while docked, and it returns by itself when the host
-leaves. The card spot lives in `chrome.storage.local` (`cardPos`).
+Host modes (`data-mode`, styled with `:host([data-mode=…])`): `docked`,
+`floating` (default corner), `custom` (at `pos`). The rail ad is hidden by
+the page css rule `rail:has(> #card-host) > :not(#card-host)`, so civitai
+re-rendering the ad cannot bring it back while docked. Drags listen on
+window: undocking re-parents the host, which would release pointer capture.
 
 ## Folder choice
 
@@ -100,5 +103,5 @@ shadow root (card, tag bar) and the page stylesheet (listing overlays).
 | `lastFolder:<prefix>` | local | `{ root, sub }` |
 | `marked` | local | `MarkedItem[]` |
 | `tagRules` | local | `TagRule[]` (order = priority) |
-| `cardPos` | local | `{ x, y }` px from the top left, or absent |
+| `placement:card`, `placement:tag` | local | `{ mode: "dock" \| "free", pos: { x, y } \| null }` |
 | `active` | session | `Record<versionId, downloadId>` |

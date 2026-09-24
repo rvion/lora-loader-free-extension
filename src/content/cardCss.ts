@@ -71,9 +71,13 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .tagname b { font-weight: 800; color: #ffa94d; }
 .saved { padding: 5px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; }
 .tagpill { border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 800; }
-/* docked: inside civitai's bottom ad slot, in its flow */
-:host([data-mode="docked"]) .dock { display: flex; justify-content: center; padding: 8px 16px; }
-/* floating: no ad slot, bottom left, clear of the card at the bottom right */
-:host([data-mode="floating"]) .dock { position: fixed; left: 18px; bottom: 18px; z-index: 2147483000;
+/* tag bar placement: its own strip under civitai's header, or floating */
+:host([data-mode="docked"]) .tagwrap { display: flex; justify-content: center; padding: 6px 16px;
+  background: #141517; border-bottom: 1px solid #373a40; }
+:host([data-mode="floating"]) .tagwrap { position: fixed; left: 18px; bottom: 18px; z-index: 2147483000;
   max-width: calc(100vw - 380px); }
+:host([data-mode="custom"]) .tagwrap { position: fixed; z-index: 2147483000; max-width: calc(100vw - 32px); }
+.grip { cursor: grab; touch-action: none; user-select: none; font-size: 16px; color: #ffa94d; padding: 0 2px; }
+.grip:active { cursor: grabbing; }
+.docknote { margin: 4px 0; font-size: 12px; flex-basis: 100%; }
 `;

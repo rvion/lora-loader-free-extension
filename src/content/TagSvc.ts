@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
+import { PlacementSvc } from "src/content/PlacementSvc.ts";
 import { parsePageTag } from "src/shared/civitai.ts";
 import type { FolderChoices } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
@@ -23,10 +24,11 @@ export class TagSvc {
   minimized = false;
   saveError: string | null = null;
   roots: Query<FolderChoices>;
+  placement = new PlacementSvc("tag");
 
   constructor() {
     this.roots = new Query(() => send({ kind: "folderChoices", prefix: "loras" }));
-    makeAutoObservable(this, { roots: false });
+    makeAutoObservable(this, { roots: false, placement: false });
     void getTagRules().then((r) => this.setRules(r));
     onTagRulesChanged((r) => this.setRules(r));
   }

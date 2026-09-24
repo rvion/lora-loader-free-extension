@@ -65,16 +65,20 @@ export async function setMarked(items: MarkedItem[]): Promise<void> {
   await chrome.storage.local.set({ marked: items });
 }
 
-export type CardPos = { x: number; y: number };
+export type ScreenPos = { x: number; y: number };
 
-export async function getCardPos(): Promise<CardPos | null> {
-  const got = await chrome.storage.local.get("cardPos");
-  return (got.cardPos as CardPos | undefined) ?? null;
+export type SavedPlacement = { mode: "dock" | "free"; pos: ScreenPos | null };
+
+export type OverlayId = "card" | "tag";
+
+export async function getPlacement(id: OverlayId): Promise<SavedPlacement | null> {
+  const key = `placement:${id}`;
+  const got = await chrome.storage.local.get(key);
+  return (got[key] as SavedPlacement | undefined) ?? null;
 }
 
-export async function setCardPos(pos: CardPos | null): Promise<void> {
-  if (pos == null) await chrome.storage.local.remove("cardPos");
-  else await chrome.storage.local.set({ cardPos: pos });
+export async function setPlacement(id: OverlayId, p: SavedPlacement): Promise<void> {
+  await chrome.storage.local.set({ [`placement:${id}`]: p });
 }
 
 export type TagRule = {

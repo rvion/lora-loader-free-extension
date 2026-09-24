@@ -1,49 +1,16 @@
-import type React from "react";
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
+import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
-/** the positioned box around the card: default place from css, or the dragged spot */
 export const CardShell = obs(function CardShell(p: { st: CardSt }) {
-  const pos = p.st.placement.pos;
-  // clamp keeps a saved spot reachable after the window shrinks
-  const style =
-    pos == null
-      ? undefined
-      : {
-          left: `clamp(0px, ${pos.x}px, calc(100vw - 120px))`,
-          top: `clamp(0px, ${pos.y}px, calc(100vh - 48px))`,
-        };
   return (
-    <div className="wrap" style={style}>
+    <Movable place={p.st.placement} className="wrap">
       <Card st={p.st} />
-    </div>
+    </Movable>
   );
 });
-
-/** header drag. listens on window, not with pointer capture: the first move re-parents the
- *  card out of civitai's rail, and moving a node releases its capture */
-function startDrag(e: React.PointerEvent<HTMLElement>, st: CardSt): void {
-  if (e.button !== 0 || (e.target instanceof Element && e.target.closest("button") != null)) return;
-  const wrap = e.currentTarget.closest(".wrap");
-  if (wrap == null) return;
-  const box = wrap.getBoundingClientRect();
-  const dx = e.clientX - box.left;
-  const dy = e.clientY - box.top;
-  const move = (ev: PointerEvent) =>
-    st.placement.setPos({ x: Math.round(ev.clientX - dx), y: Math.round(ev.clientY - dy) });
-  const up = () => {
-    window.removeEventListener("pointermove", move);
-    window.removeEventListener("pointerup", up);
-    window.removeEventListener("pointercancel", up);
-    st.placement.commit();
-  };
-  window.addEventListener("pointermove", move);
-  window.addEventListener("pointerup", up);
-  window.addEventListener("pointercancel", up);
-  e.preventDefault();
-}
 
 export const Card = obs(function Card(p: { st: CardSt }) {
   const st = p.st;
@@ -60,18 +27,10 @@ export const Card = obs(function Card(p: { st: CardSt }) {
     );
   return (
     <div className="card">
-      <header onPointerDown={(e) => startDrag(e, st)} title="Drag to move">
+      <header onPointerDown={(e) => startDrag(e, st.placement)} title="Drag to move">
         <span className="brand">LoRA Manager</span>
         <span>
-          {st.placement.pos != null && (
-            <button
-              className="icon"
-              onClick={() => st.placement.reset()}
-              title="Back to the default place"
-            >
-              ↺
-            </button>
-          )}
+          <DockButton place={st.placement} />
           <button
             className={st.server.isEditing ? "icon on" : "icon"}
             onClick={() => st.server.toggleEditing()}
@@ -84,6 +43,7 @@ export const Card = obs(function Card(p: { st: CardSt }) {
           </button>
         </span>
       </header>
+      <DockMiss place={st.placement} />
       {st.server.isOpen && <ServerField st={st} />}
       <Body st={st} />
     </div>
@@ -269,56 +229,69 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
   if (t.pageTag == null) return null;
   if (t.minimized)
     return (
-      <button className="tagpill lmf-hot" onClick={() => t.toggleMinimized()} title="Tag rule">
-        # {t.pageTag}
-        {t.rule != null ? " ✓" : ""}
-      </button>
+      <Movable place={t.placement} className="tagwrap">
+        <button className="tagpill lmf-hot" onClick={() => t.toggleMinimized()} title="Tag rule">
+          # {t.pageTag}
+          {t.rule != null ? " ✓" : ""}
+        </button>
+      </Movable>
     );
   const roots = t.roots.result?.roots ?? [];
   return (
-    <div className="tagbar">
-      <span className="tagname">
-        Tag <b>{t.pageTag}</b> →
-      </span>
-      <select
-        value={t.draftRoot}
-        onChange={(e) => t.setDraftRoot(e.currentTarget.value)}
-        title={t.draftRoot}
-      >
-        <option value="">(last used root)</option>
-        {roots.map((r) => (
-          <option key={r} value={r}>
-            {shortRoot(r)}
-          </option>
-        ))}
-      </select>
-      <span>/</span>
-      <input
-        value={t.draftSub}
-        placeholder="(root)"
-        spellCheck={false}
-        onChange={(e) => t.setDraftSub(e.currentTarget.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") void t.save();
-        }}
-      />
-      {t.isDirty ? (
-        <button className="lmf-hot" onClick={() => void t.save()}>
-          {t.rule == null ? "Save rule" : "Update rule"}
+    <Movable place={t.placement} className="tagwrap">
+      <div className="tagbar">
+        <span
+          className="grip"
+          onPointerDown={(e) => startDrag(e, t.placement)}
+          title="Drag to move"
+        >
+          ⠿
+        </span>
+        <span className="tagname">
+          Tag <b>{t.pageTag}</b> →
+        </span>
+        <select
+          value={t.draftRoot}
+          onChange={(e) => t.setDraftRoot(e.currentTarget.value)}
+          title={t.draftRoot}
+        >
+          <option value="">(last used root)</option>
+          {roots.map((r) => (
+            <option key={r} value={r}>
+              {shortRoot(r)}
+            </option>
+          ))}
+        </select>
+        <span>/</span>
+        <input
+          value={t.draftSub}
+          placeholder="(root)"
+          spellCheck={false}
+          onChange={(e) => t.setDraftSub(e.currentTarget.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void t.save();
+          }}
+        />
+        {t.isDirty ? (
+          <button className="lmf-hot" onClick={() => void t.save()}>
+            {t.rule == null ? "Save rule" : "Update rule"}
+          </button>
+        ) : (
+          <span className="saved lmf-cool">✓ rule saved</span>
+        )}
+        {t.rule != null && (
+          <button onClick={() => void t.remove()} title="Delete this rule">
+            Delete
+          </button>
+        )}
+        <DockButton place={t.placement} />
+        <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
+          –
         </button>
-      ) : (
-        <span className="saved lmf-cool">✓ rule saved</span>
-      )}
-      {t.rule != null && (
-        <button onClick={() => void t.remove()} title="Delete this rule">
-          Delete
-        </button>
-      )}
-      <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
-        –
-      </button>
-      {t.roots.error != null && <span className="error">{t.roots.error.message}</span>}
-      {t.saveError != null && <span className="error">{t.saveError}</span>}
-    </div>
+        {t.roots.error != null && <span className="error">{t.roots.error.message}</span>}
+        {t.saveError != null && <span className="error">{t.saveError}</span>}
+        <DockMiss place={t.placement} />
+      </div>
+    </Movable>
   );
 });

@@ -2,14 +2,10 @@
 
 ## The card (civitai model pages)
 
-Where it sits, first match wins:
-- **where you dragged it**: the header is a drag handle, the spot is saved
-  (kept on screen when the window shrinks), and a ↺ button in the header
-  puts the card back in its default place;
-- **docked in civitai's right rail** (desktop model pages): it takes the
-  place of the rail ad (`[class*="-module__"][class*="__rail"]`), whose
-  content is hidden while the card is docked there;
-- **bottom right**, floating.
+Placement: see "Dock and free mode" below. Its dock is civitai's right rail
+on desktop model pages (`[class*="-module__"][class*="__rail"]`), in place
+of the rail ad, which is hidden while the card is docked there. Floating
+default: bottom right.
 
 Appears on `https://civitai.com/models/<id>` and
 `https://civitai.red/models/<id>`, for the version in `?modelVersionId=`
@@ -48,6 +44,25 @@ Controls (hidden when in library):
 - **Download**: starts the download into the picked root + subfolder.
 - **Mark** / **Unmark**: adds or removes this version (with the picked
   folder) from the marked list.
+
+## Dock and free mode (card and tag bar)
+
+Each overlay is in one of two modes, saved per overlay:
+
+- **dock** (default): inserted into civitai's page at its dock spot. If the
+  page has no such spot (mobile, another layout, civitai changed its
+  markup), it floats instead.
+- **free**: floating over the page where you dropped it, else its default
+  corner.
+
+Controls, in the overlay's header:
+- **⠿ grip / header**: drag to move. Dragging a docked overlay undocks it
+  (free mode, at the drop spot). The spot stays on screen when the window
+  shrinks.
+- **⇱** (shown while docked): undock to free mode.
+- **⇲** (shown while floating): try docking again. When the page has no
+  dock spot, a short "nothing to dock into on this page" note shows for a
+  few seconds.
 
 ## Look: impossible to miss
 
@@ -96,14 +111,12 @@ A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
   applies when it is a root of the model's type (a LoRA root never applies
   to a checkpoint); the subfolder always does.
 - **Tag bar**: on a tag page, a glowing bar reads
-  `Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved rule
-  with Delete. Roots offered are the LoRA roots, plus "(last used root)". It
-  folds to a pill. It never covers civitai's own UI:
-  - **docked** (default): it takes the place of civitai's bottom ad bar
-    (`[data-adhesive-ad]`), whose content is hidden while the bar is docked
-    there. Off tag pages the ad bar is left alone;
-  - **floating** (no ad bar on the page, e.g. after "Close Ad"): fixed at the
-    bottom left, clear of the card at the bottom right.
+  `⠿ Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved
+  rule with Delete. Roots offered are the LoRA roots, plus "(last used
+  root)". It folds to a pill. Placement: see "Dock and free mode". Its dock
+  is its own strip inserted right under civitai's header (`#main header`,
+  in the page flow, so it pushes the page down and covers nothing).
+  Floating default: bottom left.
 - The card shows `Folder from rule: concept` under the folder picker when a
   rule chose it. Editing the folder there changes this download only (and
   the last used folder), never the rule.
