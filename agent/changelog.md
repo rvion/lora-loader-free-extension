@@ -5,6 +5,13 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Newer versions (newerVersion: same base model, later publishedAt, checked
+  against civitai's real data where versions are one per base model), card
+  NEWER chip and dropdown marks, listing ⬆ NEWER VERSION chip fed by
+  civitai's models?ids= batch, rich hover tooltip with local paths. Root
+  labels are the shortest unique tail (rootLabels, shortRoot deleted), the
+  tag bar lists every root by type. Both docked strips share one height.
+
 - ⚙ settings (address + restart) moved from an inline panel to a popover
   under the tools: inline it broke the docked row. Auto opens when LM is
   unreachable, `dismissed` keeps it closed until the address is saved.

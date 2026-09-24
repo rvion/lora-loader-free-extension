@@ -9,11 +9,10 @@ export type LibraryStatus =
 
 export type FolderChoices = { roots: string[]; folders: string[] };
 
+export type LocalVersion = { versionId: number; name: string; fileName: string };
+
 /** models present in the library, by civitai model id. absent ids are simply missing */
-export type LibraryBatch = Record<
-  string,
-  { modelType: string; versionCount: number; fileNames: string[] }
->;
+export type LibraryBatch = Record<string, { modelType: string; versions: LocalVersion[] }>;
 
 export type DownloadRequest = {
   downloadId: string;
@@ -132,11 +131,17 @@ export class LmClient {
       if (typeof row.modelId === "number" && versions.length > 0)
         out[String(row.modelId)] = {
           modelType: String(row.modelType ?? "model"),
-          versionCount: versions.length,
-          fileNames: versions.flatMap((v: unknown) => {
-            const name =
-              typeof v === "object" && v != null ? (v as { fileName?: unknown }).fileName : null;
-            return typeof name === "string" && name !== "" ? [name] : [];
+          versions: versions.flatMap((v: unknown) => {
+            if (typeof v !== "object" || v == null) return [];
+            const r = v as Record<string, unknown>;
+            if (typeof r.versionId !== "number") return [];
+            return [
+              {
+                versionId: r.versionId,
+                name: typeof r.name === "string" ? r.name : String(r.versionId),
+                fileName: typeof r.fileName === "string" ? r.fileName : "",
+              },
+            ];
           }),
         };
     }

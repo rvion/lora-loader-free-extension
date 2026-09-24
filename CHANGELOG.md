@@ -19,6 +19,11 @@
   for "have it", red and orange for "get it".
 - Subfolder picker that works like a select: it lists every folder LoRA
   Manager knows, filters as you type, and still takes any new path.
+- Newer versions are flagged: "⬆ NEWER VERSION" on listing cards (one click
+  installs it) and "⬆ NEWER" on the card, counting only a later version for
+  the same base model.
+- Hovering a listing chip shows which versions you have and where.
+- Root pickers show real root names ("loras") and list every root.
 - Version chip on the card: hover for base model and file, click to pick
   another version to download.
 - In library, the card shows where: `loras › krea2/styles` and the file

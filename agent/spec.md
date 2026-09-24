@@ -56,6 +56,22 @@ Controls (hidden when in library):
 - **Mark** / **Unmark**: adds or removes this version (with the picked
   folder) from the marked list.
 
+## Newer versions
+
+A version is **newer** than one you have when it has the **same base model**
+and a later `publishedAt` (version id when a date is missing). A version for
+another base model is never "newer": civitai authors often publish one
+version per base model. When several qualify, the latest one wins.
+
+- Card: when the version on screen is in the library and a newer one
+  exists, a glowing `⬆ NEWER: v2.0` chip shows; a click points the card at
+  it. The version dropdown marks each row `✓ have` and `newest`.
+- Listing chip: a model you have with a newer version shows a glowing
+  `⬆ NEWER VERSION` instead of `✓ LM`; a click installs that newer version
+  into the folder rules give. Newer info comes from civitai's
+  `/api/v1/models?ids=…` (one call per 100 in library models); if civitai
+  does not answer, the chip stays `✓ LM`.
+
 ## Dock and free mode (card and tag bar)
 
 Each overlay is in one of two modes, saved per overlay:
@@ -103,6 +119,17 @@ The pulse is an `opacity` animation on a `::after` halo layer, which the
 compositor runs without layout or paint (no box-shadow animation). It stops
 under `prefers-reduced-motion`.
 
+## Root selects
+
+Values are real root paths; labels are the shortest unique tail of the path
+(`loras`, or `extra/loras` when two roots end in `loras`), full path on
+hover. No `…/` prefixes anywhere.
+
+## Row height
+
+Both docked strips (card and tag bar) have the same height: a 40px frame
+with every control 26px high.
+
 ## Subfolder combobox (card and tag bar)
 
 One component for every subfolder field, styled as a select with a ▾.
@@ -125,7 +152,13 @@ card), once LM has answered for it:
 
 | state | shown |
 |---|---|
-| in library | green `✓ LM`, or `✓ LM ×N` when N versions are. Hover lists the local file names |
+| in library | green `✓ LM`, or `✓ LM ×N` when N versions are |
+| newer version out | glowing `⬆ NEWER VERSION` (see "newer versions") |
+
+Hovering a chip for a model you have shows a styled tooltip at once: each
+local version as `v1.0 · Krea 2 → loras › krea2/styles` and its file name
+(paths fetched on first hover, then cached), then `newer on civitai: v2.0`
+or `up to date`.
 | not in library | glowing `⬇ Install` button |
 | installing | `⬇ 42%`, or the stage text (`queued`, …) |
 | failed | red `✕ failed`, the error as tooltip. Click to retry |
@@ -151,8 +184,9 @@ A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
   to a checkpoint); the subfolder always does.
 - **Tag bar**: on a tag page, a glowing bar reads
   `⠿ Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved
-  rule with Delete. Roots offered are the LoRA roots, plus "(last used
-  root)". It folds to a pill. Placement: see "Dock and free mode". Its dock
+  rule with Delete. Roots offered are every root LoRA Manager
+  knows, grouped LoRA / Checkpoint / Embedding, preselected on the saved
+  rule's root, else the last LoRA root used. It folds to a pill. Placement: see "Dock and free mode". Its dock
   is its own strip inserted right under civitai's header (`#main header`,
   in the page flow, so it pushes the page down and covers nothing).
   Floating default: bottom left.

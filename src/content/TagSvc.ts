@@ -1,12 +1,12 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
 import { PlacementSvc } from "src/content/PlacementSvc.ts";
-import { parsePageTag } from "src/shared/civitai.ts";
-import type { FolderChoices } from "src/shared/lmClient.ts";
+import { parsePageTag, type LmPrefix } from "src/shared/civitai.ts";
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
 import {
   deleteTagRule,
+  getLastFolder,
   getTagRules,
   onTagRulesChanged,
   saveTagRule,
@@ -18,16 +18,16 @@ import { errorMessage } from "src/shared/watchDownload.ts";
 export class TagSvc {
   pageTag: string | null = null;
   rules: TagRule[] = [];
-  /** "" = keep the last used root */
+  /** "" only until the roots load, then always a real root */
   draftRoot = "";
   draftSub = "";
   minimized = false;
   saveError: string | null = null;
-  roots: Query<FolderChoices>;
+  roots: Query<AllRoots>;
   placement = new PlacementSvc("tag");
 
   constructor() {
-    this.roots = new Query(() => send({ kind: "folderChoices", prefix: "loras" }));
+    this.roots = new Query(loadAllRoots);
     makeAutoObservable(this, { roots: false, placement: false });
     void getTagRules().then((r) => this.setRules(r));
     onTagRulesChanged((r) => this.setRules(r));
@@ -49,7 +49,16 @@ export class TagSvc {
     const existing = this.rule;
     this.draftRoot = existing?.root ?? "";
     this.draftSub = existing?.sub ?? tag ?? "";
-    if (tag != null && this.roots.result == null && !this.roots.isRunning) void this.roots.run();
+    if (tag != null) void this.loadRoots();
+  }
+
+  private async loadRoots(): Promise<void> {
+    if (this.roots.result == null && !this.roots.isRunning) await this.roots.run();
+    runInAction(() => {
+      const r = this.roots.result;
+      if (r != null && this.draftRoot === "")
+        this.draftRoot = r.lastLoraRoot ?? r.byType[0]?.roots[0] ?? "";
+    });
   }
 
   setDraftRoot(root: string): void {
@@ -87,4 +96,38 @@ export class TagSvc {
   async remove(): Promise<void> {
     if (this.pageTag != null) await deleteTagRule(this.pageTag);
   }
+}
+
+const TYPE_LABELS: [LmPrefix, string][] = [
+  ["loras", "LoRA"],
+  ["checkpoints", "Checkpoint"],
+  ["embeddings", "Embedding"],
+];
+
+export type AllRoots = {
+  byType: { prefix: LmPrefix; label: string; roots: string[] }[];
+  /** lora subfolders, for the combobox */
+  folders: string[];
+  lastLoraRoot: string | null;
+};
+
+/** every root LoRA Manager knows, grouped by type; a type that fails is skipped, not fatal */
+async function loadAllRoots(): Promise<AllRoots> {
+  const [choices, last] = await Promise.all([
+    Promise.all(
+      TYPE_LABELS.map(([prefix]) => send({ kind: "folderChoices", prefix }).catch(() => null)),
+    ),
+    getLastFolder("loras"),
+  ]);
+  const byType = TYPE_LABELS.flatMap(([prefix, label], i) => {
+    const c = choices[i];
+    return c != null && c.roots.length > 0 ? [{ prefix, label, roots: c.roots }] : [];
+  });
+  if (byType.length === 0) throw new Error("LoRA Manager lists no model root");
+  const loraRoots = byType.find((t) => t.prefix === "loras")?.roots ?? [];
+  return {
+    byType,
+    folders: choices[0]?.folders ?? [],
+    lastLoraRoot: last != null && loraRoots.includes(last.root) ? last.root : null,
+  };
 }

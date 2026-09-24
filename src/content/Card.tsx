@@ -4,7 +4,7 @@ import { obs } from "rvlib-mobx";
 import type { CardSt } from "src/content/CardSt.ts";
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
 import { SubfolderBox } from "src/content/SubfolderBox.tsx";
-import { shortRoot, whereInLibrary } from "src/shared/paths.ts";
+import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
 export const CardShell = obs(function CardShell(p: { st: CardSt }) {
@@ -185,6 +185,8 @@ const VersionChip = obs(function VersionChip(p: { st: CardSt }) {
             >
               {ver.name}
               {ver.baseModel != null && <span className="muted"> · {ver.baseModel}</span>}
+              {st.library.localIds.includes(ver.id) && <span className="tag have-tag">✓ have</span>}
+              {st.library.newer?.id === ver.id && <span className="tag newer-tag">newer</span>}
             </li>
           ))}
         </ul>
@@ -213,13 +215,37 @@ const LibraryLine = obs(function LibraryLine(p: { st: CardSt }) {
         <p className="status lmf-cool" title={`LoRA Manager type: ${s.result.modelType}`}>
           ✓ In library
         </p>
+        <NewerChip st={st} />
         {s.result.files.map((f) => (
           <WhereLine key={f.filePath} path={f.filePath} roots={roots} />
         ))}
       </>
     );
   }
-  return <p className="muted">Not in library</p>;
+  const have =
+    st.page.model.result?.versions.filter((v) => st.library.localIds.includes(v.id)) ?? [];
+  return (
+    <p className="muted">
+      Not in library
+      {have.length > 0 && (
+        <span className="have"> · you have {have.map((v) => v.name).join(", ")}</span>
+      )}
+    </p>
+  );
+});
+
+const NewerChip = obs(function NewerChip(p: { st: CardSt }) {
+  const n = p.st.library.newer;
+  if (n == null) return null;
+  return (
+    <button
+      className="newer lmf-hot"
+      onClick={() => p.st.pickVersion(n.id)}
+      title={`A newer ${n.baseModel ?? ""} version is on Civitai. Click to switch the card to it.`}
+    >
+      ⬆ NEWER: {n.name}
+    </button>
+  );
 });
 
 const Controls = obs(function Controls(p: { st: CardSt }) {
@@ -298,6 +324,7 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
   const c = f.choices;
   if (c.error != null) return <p className="error">Folders: {c.error.message}</p>;
   const roots = c.result?.roots ?? [];
+  const labels = rootLabels(roots);
   if (roots.length === 0)
     return <p className="muted">{c.isRunning ? "Loading folders…" : "No model root configured"}</p>;
   return (
@@ -310,8 +337,8 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
           title={f.pick.root}
         >
           {roots.map((r) => (
-            <option key={r} value={r}>
-              {shortRoot(r)}
+            <option key={r} value={r} title={r}>
+              {labels.get(r) ?? r}
             </option>
           ))}
         </select>
@@ -342,7 +369,6 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
         </button>
       </Movable>
     );
-  const roots = t.roots.result?.roots ?? [];
   return (
     <Movable place={t.placement} className="tagwrap">
       <div className="tagbar">
@@ -361,12 +387,19 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
           onChange={(e) => t.setDraftRoot(e.currentTarget.value)}
           title={t.draftRoot}
         >
-          <option value="">(last used root)</option>
-          {roots.map((r) => (
-            <option key={r} value={r}>
-              {shortRoot(r)}
-            </option>
-          ))}
+          {t.draftRoot === "" && <option value="">loading roots…</option>}
+          {(t.roots.result?.byType ?? []).map((g) => {
+            const labels = rootLabels(g.roots);
+            return (
+              <optgroup key={g.prefix} label={g.label}>
+                {g.roots.map((r) => (
+                  <option key={r} value={r} title={r}>
+                    {labels.get(r) ?? r}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
         </select>
         <span>/</span>
         <SubfolderBox

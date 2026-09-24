@@ -1,6 +1,12 @@
 import { expect, test } from "bun:test";
 
-import { folderOptions, locateInRoots, shortRoot, whereInLibrary } from "src/shared/paths.ts";
+import {
+  folderOptions,
+  locateInRoots,
+  rootLabels,
+  shortRoot,
+  whereInLibrary,
+} from "src/shared/paths.ts";
 
 test("a file is located under the longest matching root", () => {
   const roots = ["/m/loras", "/m/loras/extra"];
@@ -16,11 +22,6 @@ test("a file is located under the longest matching root", () => {
     root: null,
     rel: "/elsewhere/c.safetensors",
   });
-});
-
-test("long roots keep their last two segments", () => {
-  expect(shortRoot("/Users/me/ComfyUI/models/loras")).toBe("…/models/loras");
-  expect(shortRoot("/loras")).toBe("/loras");
 });
 
 test("empty query: root first, then every folder sorted with depth", () => {
@@ -57,4 +58,14 @@ test("where reads as the root folder name, the path inside it, then the file", (
     dir: "",
     fileName: "b.safetensors",
   });
+});
+
+test("root labels are the shortest tail no other root shares", () => {
+  const labels = rootLabels(["/a/models/loras", "/b/extra/loras", "/c/models/checkpoints"]);
+  expect(labels.get("/a/models/loras")).toBe("models/loras");
+  expect(labels.get("/b/extra/loras")).toBe("extra/loras");
+  expect(labels.get("/c/models/checkpoints")).toBe("checkpoints");
+  expect(rootLabels(["C:\\ComfyUI\\models\\loras"]).get("C:\\ComfyUI\\models\\loras")).toBe(
+    "loras",
+  );
 });

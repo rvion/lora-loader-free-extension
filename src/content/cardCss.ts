@@ -122,6 +122,19 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .vchip:hover { border-color: #ffa94d; }
 .vchip-base { font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; background: #373a40; color: #ffd8a8; }
 .vlist { min-width: 240px; }
+/* one row height for both docked strips: a 40px frame, 26px controls */
+:host([data-mode="docked"]) .card, :host([data-mode="docked"]) .tagbar { min-height: 40px; padding: 4px 10px; gap: 4px 10px; }
+:host([data-mode="docked"]) :is(select, input, button:not(.icon):not(.link)),
+:host([data-mode="docked"]) :is(.status, .saved, .vchip) { height: 26px; box-sizing: border-box; }
+:host([data-mode="docked"]) :is(.status, .saved, .vchip) { display: inline-flex; align-items: center; }
+:host([data-mode="docked"]) .tagwrap, :host([data-mode="docked"]) .wrap { padding: 4px 12px; }
+:host([data-mode="docked"]) :is(.grip, .brand, button.icon) { line-height: 1; }
+/* newer version */
+.newer { font-weight: 800; }
+.have { color: #69db7c; }
+.tag { margin-left: 6px; font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; }
+.have-tag { background: #2b8a3e; color: #fff; }
+.newer-tag { background: #e8590c; color: #fff; }
 /* subfolder combobox */
 .combo { position: relative; display: inline-block; width: 100%; }
 .combo input { padding-right: 52px; cursor: pointer; }

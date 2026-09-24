@@ -84,7 +84,7 @@ export async function setPlacement(id: OverlayId, p: SavedPlacement): Promise<vo
 export type TagRule = {
   /** lowercased civitai tag */
   tag: string;
-  /** null: keep the last used root */
+  /** null only on rules saved before roots were picked explicitly: resolves to the last used root */
   root: string | null;
   sub: string;
 };

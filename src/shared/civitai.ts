@@ -21,6 +21,8 @@ export type CivitaiVersion = {
   id: number;
   name: string;
   baseModel: string | null;
+  /** iso date, null when civitai gives none */
+  publishedAt: string | null;
   files: CivitaiFile[];
 };
 
@@ -132,6 +134,8 @@ export function parseCivitaiModel(json: unknown): CivitaiModel {
             id: r.id,
             name: typeof r.name === "string" ? r.name : String(r.id),
             baseModel: typeof r.baseModel === "string" && r.baseModel !== "" ? r.baseModel : null,
+            publishedAt:
+              typeof r.publishedAt === "string" && r.publishedAt !== "" ? r.publishedAt : null,
             files: parseFiles(r.files),
           },
         ]
@@ -179,4 +183,49 @@ export async function fetchCivitaiModel(origin: string, modelId: number): Promis
   const res = await fetch(`${origin}/api/v1/models/${modelId}`);
   if (!res.ok) throw new Error(`civitai: GET model ${modelId} → HTTP ${res.status}`);
   return parseCivitaiModel(await res.json());
+}
+
+/** up to 100 models in one call; models civitai does not return are simply absent */
+export async function fetchCivitaiModels(
+  origin: string,
+  ids: number[],
+): Promise<Map<number, CivitaiModel>> {
+  const out = new Map<number, CivitaiModel>();
+  if (ids.length === 0) return out;
+  const res = await fetch(`${origin}/api/v1/models?ids=${ids.join(",")}&limit=100&nsfw=true`);
+  if (!res.ok) throw new Error(`civitai: GET models → HTTP ${res.status}`);
+  const json: unknown = await res.json();
+  const items =
+    typeof json === "object" && json != null ? (json as { items?: unknown }).items : null;
+  for (const it of Array.isArray(items) ? items : []) {
+    try {
+      const m = parseCivitaiModel(it);
+      out.set(m.id, m);
+    } catch {
+      // one malformed item must not hide the others
+    }
+  }
+  return out;
+}
+
+/** agent/spec.md "newer versions": same base model, published later; the latest such wins */
+export function newerVersion(
+  versions: CivitaiVersion[],
+  localIds: number[],
+): CivitaiVersion | null {
+  const local = new Set(localIds);
+  const mine = versions.filter((v) => local.has(v.id));
+  let best: CivitaiVersion | null = null;
+  for (const v of versions) {
+    if (local.has(v.id)) continue;
+    if (!mine.some((m) => m.baseModel === v.baseModel && isLater(v, m))) continue;
+    if (best == null || isLater(v, best)) best = v;
+  }
+  return best;
+}
+
+function isLater(a: CivitaiVersion, b: CivitaiVersion): boolean {
+  if (a.publishedAt != null && b.publishedAt != null && a.publishedAt !== b.publishedAt)
+    return a.publishedAt > b.publishedAt;
+  return a.id > b.id;
 }

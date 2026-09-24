@@ -4,6 +4,7 @@ import {
   fetchCivitaiModel,
   fileLabel,
   lmPrefixForCivitaiType,
+  newerVersion,
   parseCivitaiModelUrl,
   weightFiles,
   type CivitaiFile,
@@ -13,7 +14,7 @@ import {
   type LmPrefix,
 } from "src/shared/civitai.ts";
 import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts";
-import type { LibraryStatus } from "src/shared/lmClient.ts";
+import type { LibraryBatch, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { AdSvc } from "src/content/AdSvc.ts";
 import { ListingSvc } from "src/content/ListingSvc.ts";
@@ -262,6 +263,7 @@ export class PageSvc {
         id: wanted,
         name: `version ${wanted}`,
         baseModel: null,
+        publishedAt: null,
         files: [],
       }
     );
@@ -279,6 +281,8 @@ export class PageSvc {
 
 export class LibrarySvc {
   status: Query<LibraryStatus>;
+  /** every version of this model in the library, for newer version detection */
+  local: Query<LibraryBatch[string] | null>;
 
   constructor(private st: CardSt) {
     this.status = new Query(() => {
@@ -287,15 +291,31 @@ export class LibrarySvc {
       if (m == null || v == null) return Promise.reject(new Error("no version on this page"));
       return send({ kind: "libraryStatus", modelId: m.id, versionId: v.id });
     });
-    makeAutoObservable<LibrarySvc, "st">(this, { st: false, status: false });
+    this.local = new Query(async () => {
+      const m = this.st.page.model.result;
+      if (m == null) return null;
+      const found = await send({ kind: "libraryBatch", modelIds: [m.id] });
+      return found[String(m.id)] ?? null;
+    });
+    makeAutoObservable<LibrarySvc, "st">(this, { st: false, status: false, local: false });
   }
 
-  check(): Promise<void> {
-    return this.status.run();
+  async check(): Promise<void> {
+    await Promise.all([this.status.run(), this.local.run()]);
   }
 
   get inLibrary(): boolean {
     return this.status.result?.exists === true;
+  }
+
+  get localIds(): number[] {
+    return this.local.result?.versions.map((v) => v.versionId) ?? [];
+  }
+
+  /** agent/spec.md "newer versions" */
+  get newer(): CivitaiVersion | null {
+    const m = this.st.page.model.result;
+    return m == null ? null : newerVersion(m.versions, this.localIds);
   }
 }
 

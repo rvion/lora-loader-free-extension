@@ -107,14 +107,21 @@ test("library batch keeps only models with versions in the library", async () =>
       body: {
         success: true,
         results: [
-          { modelId: 1, modelType: "lora", versions: [{ fileName: "a.safetensors" }, {}] },
+          {
+            modelId: 1,
+            modelType: "lora",
+            versions: [{ versionId: 11, name: "v1", fileName: "a.safetensors" }, { bad: 1 }],
+          },
           { modelId: 2, modelType: null, versions: [] },
         ],
       },
     },
   });
   expect(await lm.client.libraryBatch([1, 2])).toEqual({
-    "1": { modelType: "lora", versionCount: 2, fileNames: ["a.safetensors"] },
+    "1": {
+      modelType: "lora",
+      versions: [{ versionId: 11, name: "v1", fileName: "a.safetensors" }],
+    },
   });
   expect(lm.calls[0]?.url).toBe("http://127.0.0.1:8188/api/lm/check-models-exist?modelIds=1,2");
 });

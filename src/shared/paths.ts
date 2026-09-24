@@ -1,11 +1,26 @@
 const toSlash = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "");
 
-/** the last two segments, so a long root stays readable */
-export function shortRoot(root: string): string {
-  const parts = toSlash(root)
-    .split("/")
-    .filter((s) => s !== "");
-  return parts.length <= 2 ? root : `…/${parts.slice(-2).join("/")}`;
+/** each root by the shortest tail of its path that no other root shares: "loras", or "extra/loras" */
+export function rootLabels(roots: string[]): Map<string, string> {
+  const segs = roots.map((r) =>
+    toSlash(r)
+      .split("/")
+      .filter((s) => s !== ""),
+  );
+  const out = new Map<string, string>();
+  roots.forEach((root, i) => {
+    const mine = segs[i] ?? [];
+    for (let n = 1; n <= mine.length; n++) {
+      const tail = mine.slice(-n).join("/");
+      const clash = segs.some((other, j) => j !== i && other.slice(-n).join("/") === tail);
+      if (!clash || n === mine.length) {
+        out.set(root, tail !== "" ? tail : root);
+        break;
+      }
+    }
+    if (!out.has(root)) out.set(root, root);
+  });
+  return out;
 }
 
 /** splits a file path into the model root holding it (longest match) and the rest */

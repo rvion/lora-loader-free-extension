@@ -6,8 +6,10 @@ import {
   modelIdFromHref,
   parseCivitaiModel,
   parseCivitaiModelUrl,
+  newerVersion,
   weightFiles,
   type CivitaiFile,
+  type CivitaiVersion,
 } from "src/shared/civitai.ts";
 
 test("model page url with and without a version", () => {
@@ -55,7 +57,7 @@ test("model answer keeps id, name, type and versions", () => {
     name: "x",
     type: "LORA",
     tags: [],
-    versions: [{ id: 2, name: "v1", baseModel: null, files: [] }],
+    versions: [{ id: 2, name: "v1", baseModel: null, publishedAt: null, files: [] }],
   });
   expect(() => parseCivitaiModel({ error: "nope" })).toThrow();
 });
@@ -86,6 +88,7 @@ test("weight files keep only weights, primary first", () => {
     id: 1,
     name: "v1",
     baseModel: null,
+    publishedAt: null,
     files: [
       file({ id: 1 }),
       file({ id: 2, type: "Training Data" }),
@@ -129,4 +132,37 @@ test("model tags are lowercased, from strings or { name } objects", () => {
     tags: ["Concept", { name: "Style" }, 3, ""],
   });
   expect(m.tags).toEqual(["concept", "style"]);
+});
+
+const ver = (id: number, baseModel: string, publishedAt: string | null): CivitaiVersion => ({
+  id,
+  name: `v${id}`,
+  baseModel,
+  publishedAt,
+  files: [],
+});
+
+test("newer means same base model, published later; latest wins", () => {
+  const versions = [
+    ver(1, "Krea 2", "2026-09-01"),
+    ver(2, "Krea 2", "2026-09-10"),
+    ver(3, "Krea 2", "2026-09-20"),
+  ];
+  expect(newerVersion(versions, [1])?.id).toBe(3);
+  expect(newerVersion(versions, [3])).toBeNull();
+  expect(newerVersion(versions, [])).toBeNull();
+});
+
+test("a version for another base model is never newer (TOT-ART shape)", () => {
+  const versions = [
+    ver(3339790, "Pony", "2026-09-19"),
+    ver(3339789, "ZImageTurbo", "2026-09-20"),
+    ver(3339788, "Krea 2", "2026-09-21"),
+  ];
+  expect(newerVersion(versions, [3339790])).toBeNull();
+  expect(newerVersion(versions, [3339788])).toBeNull();
+});
+
+test("without dates the higher version id is the later one", () => {
+  expect(newerVersion([ver(5, "SDXL", null), ver(9, "SDXL", null)], [5])?.id).toBe(9);
 });

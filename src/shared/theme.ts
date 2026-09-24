@@ -34,6 +34,14 @@ ${GLOW_CSS}
 .lmf-chip.lmf-hot, .lmf-chip.lmf-danger { cursor: pointer; }
 .lmf-chip.lmf-hot:hover { transform: scale(1.08); }
 .lmf-chip.lmf-busy { cursor: progress; }
+.lmf-tip { position: fixed; z-index: 2147483600; max-width: 420px; padding: 7px 10px; border-radius: 8px; pointer-events: none;
+  background: #1f2023; color: #f1f3f5; border: 1px solid #5c5f66; box-shadow: 0 10px 30px rgba(0,0,0,.65);
+  font: 500 12px/1.4 system-ui, -apple-system, sans-serif; white-space: pre-wrap; word-break: break-all; }
+.lmf-tip-head { font-weight: 800; margin-bottom: 3px; }
+.lmf-tip-muted { color: #adb5bd; }
+.lmf-tip-hot { margin-top: 4px; font-weight: 800; color: #ffa94d; }
+.lmf-tip-cool { margin-top: 4px; font-weight: 700; color: #69db7c; }
+.lmf-tip-bad { font-weight: 800; color: #ff8787; }
 /* ads: a red ring and a label so the removal is visible, then out (compositor only: opacity, transform) */
 .lmf-ad-kill { position: relative !important; overflow: hidden !important; outline: 3px solid #ff1744 !important;
   outline-offset: -3px; box-shadow: inset 0 0 24px 6px rgba(255, 23, 68, .7) !important;

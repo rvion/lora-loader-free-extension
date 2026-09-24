@@ -108,7 +108,10 @@ const Rules = obs(function Rules(p: { st: PopupSt }) {
             <div className="item">
               <div className="name"># {r.tag}</div>
               <div className="muted">
-                → {r.root != null ? (r.root.split(/[\\/]/).pop() ?? r.root) : "(last used root)"}
+                →{" "}
+                {r.root != null
+                  ? (r.root.split(/[\\/]/).pop() ?? r.root)
+                  : "default root (update the rule to pick one)"}
                 {r.sub !== "" ? `/${r.sub}` : ""}
               </div>
             </div>
