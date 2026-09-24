@@ -1,6 +1,7 @@
 import { defineRepo } from 'rvlib-shipkit/src/repo-config.ts'
 
 export default defineRepo({
+    identity: { colorLight: '#2193a1', colorDark: '#77d8e3' },
     name: 'lora-loader-free-extension',
     venues: [], // e.g. ['itch', 'steam'], selects which .shipkit/<venue>/ contracts are REQUIRED
     social: [], // e.g. ['x', 'discord'], the .shipkit/social/<channel>/ post folders (+ .shipkit/discord/)
