@@ -66,11 +66,7 @@ version per base model. When several qualify, the latest one wins.
 - Card: when the version on screen is in the library and a newer one
   exists, a glowing `⬆ NEWER: v2.0` chip shows; a click points the card at
   it. The version dropdown marks each row `✓ have` and `newest`.
-- Listing chip: a model you have with a newer version shows a glowing
-  `⬆ NEWER VERSION` instead of `✓ LM`; a click installs that newer version
-  into the folder rules give. Newer info comes from civitai's
-  `/api/v1/models?ids=…` (one call per 100 in library models); if civitai
-  does not answer, the chip stays `✓ LM`.
+- Listing: per base model, see "listing cards".
 
 ## Dock and free mode (card and tag bar)
 
@@ -146,35 +142,54 @@ the root (`../x`) with an error shown on the card.
 ## Listing cards (every civitai page)
 
 Every model card (a link to `/models/<id>` that holds an image or video:
-home, search, browse, tag pages, creator pages, suggestions) gets, on its
-left edge 44px down (below the badge row civitai draws along the top of the
-card), once LM has answered for it:
+home, search, browse, tag pages, creator pages, suggestions) gets a column of
+chips on its left edge, 44px down (below civitai's own badge row), **one
+chip per base model** the model has a version for (Krea 2, Anima, Pony, …),
+each about the **latest version of that base** (latest `publishedAt`):
 
-| state | shown |
+| state of that base | chip |
 |---|---|
-| in library | green `✓ LM`, or `✓ LM ×N` when N versions are |
-| newer version out | glowing `⬆ NEWER VERSION` (see "newer versions") |
+| a version of it in the library, none later | green `✓ Krea 2` |
+| in the library, a later version of it out | glowing `⬆ NEWER Krea 2` (click installs the later one) |
+| not in the library | glowing `⬇ Anima [loras] (anima/styles)`: root label and subfolder as two distinct tags |
+| installing | `⬇ Anima 42%`, or the stage text |
+| failed | red `✕ Anima failed`, reason in the tooltip, click to retry |
 
-Hovering a chip for a model you have shows a styled tooltip at once: each
-local version as `v1.0 · Krea 2 → loras › krea2/styles` and its file name
-(paths fetched on first hover, then cached), then `newer on civitai: v2.0`
-or `up to date`.
-| not in library | glowing `⬇ Install` button |
-| installing | `⬇ 42%`, or the stage text (`queued`, …) |
-| failed | red `✕ failed`, the error as tooltip. Click to retry |
+More than 4 bases: the first 4 in civitai's order, then `+N` (the tooltip
+lists every base). Until civitai's data for that model is in, a single chip
+stands in: `✓ LM` / `✓ LM ×N` when LM has it, plain `⬇ Install` (civitai's
+default version) when not.
 
-⬇ Install downloads the model's latest version (Civitai's first), its
-primary file, into the folder the tag rules give (below), else the last
-folder used for that model type. The click never opens the model page.
-When the file is in the library the button turns into ✓ LM.
+**Target folder**: the tag rules (below), with `{base}` resolved per chip,
+else the last folder used for that model type; the root label is the root's
+short name. On a tag page the chips follow the tag bar's **unsaved draft**
+live: edit root or subfolder there and every chip retargets as you type;
+clicking installs exactly what the chip shows. Saved rules, the last used
+folder and the draft all re-render the chips at once when they change.
 
-New cards (infinite scroll, SPA navigation) get badges as they appear, with
-one batched call per ~100 new ids. LM unreachable → no badges, retried every
-30 s.
+Civitai data for every model on screen comes from `/api/v1/models?ids=…`,
+100 per call. LoRA Manager presence comes from one batched call per ~100 new
+ids. LM unreachable → no chips, retried every 30 s. The chips swallow the
+click, so civitai's card never navigates.
+
+Hovering a chip shows a styled tooltip at once: each local version as
+`v1.0 · Krea 2` with where its files are (`loras › krea2/styles / file`,
+fetched on first hover then cached), then one line per base: up to date,
+newer version out, or not installed with its target.
 
 ## Tag rules (tag → folder)
 
-A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
+A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased. A rule
+only sets the **default** folder (the card's fields on a model page, and
+listing ⬇ Install); editing the card's fields changes one download, never
+the rule.
+
+**`{base}`** in a rule's subfolder is replaced by the version's base model,
+made folder safe: lowercase, letters and digits only (`Krea 2` → `krea2`,
+`Flux.1 D` → `flux1d`, `Illustrious` → `illustrious`), `other` when civitai
+gives none. So `style → loras / {base}/styles` sends each LoRA to
+`krea2/styles`, `anima/styles`, … The tag bar has a `{base}` button that
+inserts it, and says what it does.
 
 - **Where the folder comes from**, for the card and for ⬇ Install: on a tag
   page (`/models?tag=concept`, `/tag/concept`) that page's tag rule wins;

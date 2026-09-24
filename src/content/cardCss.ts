@@ -129,6 +129,8 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 :host([data-mode="docked"]) :is(.status, .saved, .vchip) { display: inline-flex; align-items: center; }
 :host([data-mode="docked"]) .tagwrap, :host([data-mode="docked"]) .wrap { padding: 4px 12px; }
 :host([data-mode="docked"]) :is(.grip, .brand, button.icon) { line-height: 1; }
+button.basebtn { font-size: 11px; font-weight: 800; color: #ffa94d; border: 1px dashed #ffa94d; border-radius: 5px;
+  padding: 0 6px; height: 22px; }
 /* newer version */
 .newer { font-weight: 800; }
 .have { color: #69db7c; }

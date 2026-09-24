@@ -1,4 +1,4 @@
-import { makeAutoObservable, runInAction } from "mobx";
+import { makeAutoObservable, reaction, runInAction } from "mobx";
 
 import {
   fetchCivitaiModel,
@@ -55,7 +55,7 @@ export class CardSt {
     this.page = new PageSvc();
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
-    this.listing = new ListingSvc();
+    this.listing = new ListingSvc(() => this.tag.draftRule);
     this.ads = new AdSvc();
     this.placement = new PlacementSvc("card");
     this.tag = new TagSvc();
@@ -85,6 +85,11 @@ export class CardSt {
       placement: false,
       tag: false,
     });
+    // the tag bar's draft retargets every listing chip as you type
+    reaction(
+      () => JSON.stringify(this.tag.draftRule),
+      () => this.listing.refresh(),
+    );
   }
 
   toggleCollapsed(): void {
@@ -118,7 +123,7 @@ export class CardSt {
     if (m == null || v == null || prefix == null) return;
     await Promise.all([
       this.library.check(),
-      this.folder.load(prefix, m.tags),
+      this.folder.load(prefix, m.tags, v.baseModel),
       this.download.resume(m.id, v.id),
     ]);
   }
@@ -326,24 +331,27 @@ export class FolderSvc {
   via: string | null = null;
   private prefix: LmPrefix | null = null;
   private tags: string[] = [];
+  private baseModel: string | null = null;
 
   constructor(private st: CardSt) {
     this.choices = new Query(() => {
       const prefix = this.prefix;
       if (prefix == null) return Promise.reject(new Error("unsupported model type"));
-      return suggestFolder(prefix, this.tags, null);
+      return suggestFolder(prefix, this.tags, null, this.baseModel);
     });
-    makeAutoObservable<FolderSvc, "st" | "prefix" | "tags">(this, {
+    makeAutoObservable<FolderSvc, "st" | "prefix" | "tags" | "baseModel">(this, {
       st: false,
       choices: false,
       prefix: false,
       tags: false,
+      baseModel: false,
     });
   }
 
-  async load(prefix: LmPrefix, tags: string[]): Promise<void> {
+  async load(prefix: LmPrefix, tags: string[], baseModel: string | null): Promise<void> {
     this.prefix = prefix;
     this.tags = tags;
+    this.baseModel = baseModel;
     await this.choices.run();
     runInAction(() => {
       const r = this.choices.result;

@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 
 import { parsePageTag } from "src/shared/civitai.ts";
-import { resolveFolder, type ResolveInput } from "src/shared/folderRules.ts";
+import { baseSlug, resolveFolder, withDraft, type ResolveInput } from "src/shared/folderRules.ts";
 
 const base: ResolveInput = {
   roots: ["/m/loras", "/big/loras"],
@@ -9,6 +9,7 @@ const base: ResolveInput = {
   pageTag: null,
   rules: [],
   last: { root: "/big/loras", sub: "misc" },
+  baseModel: null,
 };
 
 test("no rule: last used folder", () => {
@@ -50,4 +51,26 @@ test("page tag comes from ?tag= on /models and from /tag/<name>", () => {
   expect(parsePageTag("https://civitai.com/tag/Anime%20Style")).toBe("anime style");
   expect(parsePageTag("https://civitai.com/models/123?tag=concept")).toBeNull();
   expect(parsePageTag("https://civitai.com/models")).toBeNull();
+});
+
+test("{base} in a rule becomes the folder safe base model", () => {
+  expect(baseSlug("Krea 2")).toBe("krea2");
+  expect(baseSlug("Flux.1 D")).toBe("flux1d");
+  expect(baseSlug(null)).toBe("other");
+  const rules = [{ tag: "style", root: "/m/loras", sub: "{base}/styles" }];
+  expect(resolveFolder({ ...base, modelTags: ["style"], rules, baseModel: "Anima" }).pick.sub).toBe(
+    "anima/styles",
+  );
+});
+
+test("the tag bar draft replaces the saved rule for its tag", () => {
+  const saved = [
+    { tag: "style", root: "/m/loras", sub: "old" },
+    { tag: "concept", root: null, sub: "c" },
+  ];
+  expect(withDraft(saved, { tag: "style", root: "/big/loras", sub: "{base}/styles" })).toEqual([
+    { tag: "style", root: "/big/loras", sub: "{base}/styles" },
+    { tag: "concept", root: null, sub: "c" },
+  ]);
+  expect(withDraft(saved, null)).toBe(saved);
 });

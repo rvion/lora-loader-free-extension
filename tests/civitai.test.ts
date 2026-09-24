@@ -6,6 +6,8 @@ import {
   modelIdFromHref,
   parseCivitaiModel,
   parseCivitaiModelUrl,
+  baseGroups,
+  hasNewer,
   newerVersion,
   weightFiles,
   type CivitaiFile,
@@ -165,4 +167,22 @@ test("a version for another base model is never newer (TOT-ART shape)", () => {
 
 test("without dates the higher version id is the later one", () => {
   expect(newerVersion([ver(5, "SDXL", null), ver(9, "SDXL", null)], [5])?.id).toBe(9);
+});
+
+test("versions group by base model, latest per base, what you have per base", () => {
+  const versions = [
+    ver(1, "Krea 2", "2026-09-01"),
+    ver(2, "Anima", "2026-09-05"),
+    ver(3, "Krea 2", "2026-09-10"),
+    ver(4, "Anima", "2026-09-02"),
+  ];
+  const groups = baseGroups(versions, [1, 4]);
+  expect(groups.map((g) => [g.base, g.latest.id, g.have?.id ?? null, hasNewer(g)])).toEqual([
+    ["Krea 2", 3, 1, true],
+    ["Anima", 2, 4, true],
+  ]);
+  expect(baseGroups(versions, [3]).map((g) => [g.base, g.have?.id ?? null, hasNewer(g)])).toEqual([
+    ["Krea 2", 3, false],
+    ["Anima", null, false],
+  ]);
 });

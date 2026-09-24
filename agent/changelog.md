@@ -5,6 +5,13 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Listing chips are one per base model (baseGroups, hasNewer): a single
+  "✓ LM" on a Krea 2 / Anima / Illustrious model hid which one you have.
+  Install chips carry their target ([root] (sub)), resolved synchronously by
+  FolderCtx (rules, roots, last folder in memory) with `{base}` per chip and
+  the tag bar's unsaved draft (withDraft) previewed live. Civitai data is now
+  fetched for every model on screen, not only owned ones.
+
 - Newer versions (newerVersion: same base model, later publishedAt, checked
   against civitai's real data where versions are one per base model), card
   NEWER chip and dropdown marks, listing ⬆ NEWER VERSION chip fed by

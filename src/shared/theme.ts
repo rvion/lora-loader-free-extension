@@ -27,13 +27,21 @@ ${glow(".lmf-danger", DANGER, HOT_HALO)}
 /** injected once into civitai's own document for the listing overlays */
 export const PAGE_CSS = `
 ${GLOW_CSS}
-/* below the badge row civitai draws along the top of each card */
-.lmf-chip { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 999px; font: 800 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
-  cursor: default; user-select: none; }
-.lmf-chip.lmf-hot, .lmf-chip.lmf-danger { cursor: pointer; }
-.lmf-chip.lmf-hot:hover { transform: scale(1.08); }
+/* below the badge row civitai draws along the top of each card: one chip per base model */
+.lmf-chips { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 4px; max-width: calc(100% - 16px); }
+.lmf-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; max-width: 100%;
+  padding: 2px 9px; border-radius: 999px; font: 800 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;
+  cursor: default; user-select: none; white-space: nowrap; }
+.lmf-chip[data-install] { cursor: pointer; }
+.lmf-chip[data-install]:hover { filter: brightness(1.12); }
 .lmf-chip.lmf-busy { cursor: progress; }
+.lmf-chip.lmf-more { background: rgba(20,21,23,.85); color: #f1f3f5; border: 1px solid #5c5f66; }
+/* the target: root and subfolder as two distinct tags */
+.lmf-root { padding: 0 5px; border-radius: 4px; background: rgba(0,0,0,.45); font-size: 10px; letter-spacing: .04em;
+  text-transform: uppercase; flex: none; }
+.lmf-sub { padding: 0 5px; border-radius: 4px; background: rgba(255,255,255,.22); font-weight: 700; font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lmf-tip { position: fixed; z-index: 2147483600; max-width: 420px; padding: 7px 10px; border-radius: 8px; pointer-events: none;
   background: #1f2023; color: #f1f3f5; border: 1px solid #5c5f66; box-shadow: 0 10px 30px rgba(0,0,0,.65);
   font: 500 12px/1.4 system-ui, -apple-system, sans-serif; white-space: pre-wrap; word-break: break-all; }

@@ -408,6 +408,13 @@ export const TagBar = obs(function TagBar(p: { st: CardSt }) {
           onChange={(v) => t.setDraftSub(v)}
           onEnter={() => void t.save()}
         />
+        <button
+          className="icon basebtn"
+          onClick={() => t.insertBase()}
+          title="{base} = the version's base model, folder safe (Krea 2 → krea2, Anima → anima). Put it in the subfolder to split by base model, e.g. {base}/styles"
+        >
+          {"{base}"}
+        </button>
         {t.isDirty ? (
           <button className="lmf-hot" onClick={() => void t.save()}>
             {t.rule == null ? "Save rule" : "Update rule"}

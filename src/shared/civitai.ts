@@ -229,3 +229,34 @@ function isLater(a: CivitaiVersion, b: CivitaiVersion): boolean {
     return a.publishedAt > b.publishedAt;
   return a.id > b.id;
 }
+
+export type BaseGroup = {
+  /** civitai's base model name, null when it gives none */
+  base: string | null;
+  /** the latest version for this base */
+  latest: CivitaiVersion;
+  /** the latest version for this base that is in the library, null when none is */
+  have: CivitaiVersion | null;
+};
+
+/** one group per base model, in civitai's order of first appearance */
+export function baseGroups(versions: CivitaiVersion[], localIds: number[]): BaseGroup[] {
+  const local = new Set(localIds);
+  const groups = new Map<string, BaseGroup>();
+  for (const v of versions) {
+    const key = v.baseModel ?? "";
+    const g = groups.get(key);
+    const mine = local.has(v.id) ? v : null;
+    if (g == null) {
+      groups.set(key, { base: v.baseModel, latest: v, have: mine });
+      continue;
+    }
+    if (isLater(v, g.latest)) g.latest = v;
+    if (mine != null && (g.have == null || isLater(mine, g.have))) g.have = mine;
+  }
+  return [...groups.values()];
+}
+
+export function hasNewer(g: BaseGroup): boolean {
+  return g.have != null && g.have.id !== g.latest.id && isLater(g.latest, g.have);
+}

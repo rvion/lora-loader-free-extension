@@ -65,6 +65,18 @@ export class TagSvc {
     this.draftRoot = root;
   }
 
+  /** the rule as edited right now, saved or not: every listing chip previews it live */
+  get draftRule(): TagRule | null {
+    if (this.pageTag == null || this.draftRoot === "") return null;
+    return { tag: this.pageTag, root: this.draftRoot, sub: this.draftSub };
+  }
+
+  /** puts `{base}/` in front of the subfolder, once */
+  insertBase(): void {
+    if (!this.draftSub.includes("{base}"))
+      this.draftSub = this.draftSub === "" ? "{base}" : `{base}/${this.draftSub}`;
+  }
+
   setDraftSub(sub: string): void {
     this.draftSub = sub.replace(/\\/g, "/").replace(/^\/+/, "");
   }

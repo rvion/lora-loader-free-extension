@@ -19,6 +19,12 @@
   for "have it", red and orange for "get it".
 - Subfolder picker that works like a select: it lists every folder LoRA
   Manager knows, filters as you type, and still takes any new path.
+- Listing cards get one chip per base model (Krea 2, Anima, Illustrious, …)
+  saying which you have, which have a newer version, and where each missing
+  one would install: "⬇ Anima [loras] (anima/styles)".
+- Tag rules accept {base} in the subfolder, replaced by the version's base
+  model, so one rule can split by base model. Editing the tag bar retargets
+  every install chip on the page as you type.
 - Newer versions are flagged: "⬆ NEWER VERSION" on listing cards (one click
   installs it) and "⬆ NEWER" on the card, counting only a later version for
   the same base model.

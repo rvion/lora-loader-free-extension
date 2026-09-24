@@ -1,54 +1,73 @@
 import { makeObservable } from "mobx";
 
 import {
+  baseGroups,
   fetchCivitaiModel,
   fetchCivitaiModels,
+  hasNewer,
   lmPrefixForCivitaiType,
   modelIdFromHref,
-  newerVersion,
   parsePageTag,
   weightFiles,
+  type BaseGroup,
   type CivitaiModel,
   type CivitaiVersion,
   type LmPrefix,
 } from "src/shared/civitai.ts";
-import { suggestFolder } from "src/shared/folderRules.ts";
+import { resolveFolder, withDraft } from "src/shared/folderRules.ts";
 import type { LibraryBatch } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
-import { whereInLibrary } from "src/shared/paths.ts";
+import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
+import {
+  getLastFolder,
+  getTagRules,
+  onTagRulesChanged,
+  type FolderPick,
+  type TagRule,
+} from "src/shared/storage.ts";
 import { PAGE_CSS } from "src/shared/theme.ts";
 import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
 
 type Presence = LibraryBatch[string];
 
-const CHIP_ATTR = "data-lmf-chip";
+const CHIPS_ATTR = "data-lmf-chips";
 const DEBOUNCE_MS = 300;
 /** keeps the query strings of check-models-exist and civitai's models?ids= under their limits */
 const CHUNK = 100;
 /** civitai mutates its dom constantly: without this, an unreachable LM gets a call every pass */
 const DOWN_BACKOFF_MS = 30_000;
+const MAX_BASE_CHIPS = 4;
+
+export type Target = { root: string; rootLabel: string; sub: string };
 
 export type Chip = {
-  cls: "lmf-cool" | "lmf-hot" | "lmf-danger" | "lmf-hot lmf-busy";
+  cls: "lmf-cool" | "lmf-hot" | "lmf-danger" | "lmf-hot lmf-busy" | "lmf-more";
   text: string;
+  /** the version a click installs; null = civitai's default version; undefined = not clickable */
+  install?: number | null;
+  target?: Target;
 };
 
-/** the overlay on every civitai model card: ✓ in library, ⬆ newer, ⬇ install, progress. plain dom, nothing observable */
+/** the chips on every civitai model card, one per base model (agent/spec.md "listing cards"). plain dom */
 export class ListingSvc {
   /** null = checked and absent */
   private known = new Map<number, Presence | null>();
-  /** civitai's view of models we have, for newer versions. null = civitai did not answer */
+  /** civitai's view of each model on screen. null = civitai did not answer */
   private remote = new Map<number, CivitaiModel | null>();
+  /** install jobs by version id */
   private jobs = new Map<number, DownloadState>();
   private inflight = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private retryAfter = 0;
   private observer: MutationObserver;
   private tip = new Tip();
+  private ctx: FolderCtx;
 
-  constructor() {
+  /** draft: the tag bar's unsaved rule, previewed live by every chip */
+  constructor(draft: () => TagRule | null) {
     makeObservable(this, {});
     injectPageCss();
+    this.ctx = new FolderCtx(draft, () => this.schedule());
     this.observer = new MutationObserver(() => this.schedule());
     this.observer.observe(document.body, { childList: true, subtree: true });
     this.schedule();
@@ -57,6 +76,11 @@ export class ListingSvc {
   dispose(): void {
     this.observer.disconnect();
     if (this.timer != null) clearTimeout(this.timer);
+  }
+
+  /** a rule, a draft or the last folder changed: retarget every chip */
+  refresh(): void {
+    this.schedule();
   }
 
   forget(modelId: number): void {
@@ -69,6 +93,7 @@ export class ListingSvc {
     this.known.clear();
     this.remote.clear();
     this.tip.forgetAll();
+    this.ctx.forgetRoots();
     this.retryAfter = 0;
     this.schedule();
   }
@@ -82,15 +107,14 @@ export class ListingSvc {
   }
 
   private async pass(): Promise<void> {
-    const missing = unknownIds(modelCards(), this.known, this.inflight);
+    const onScreen = modelCards();
+    const missing = unknownIds(onScreen, this.known, this.inflight);
     if (missing.length > 0 && Date.now() >= this.retryAfter) {
       await Promise.all(chunk(missing, CHUNK).map((ids) => this.fetch(ids)));
     }
-    const owned = [...this.known].flatMap(([id, p]) =>
-      p != null && !this.remote.has(id) ? [id] : [],
-    );
-    if (owned.length > 0)
-      await Promise.all(chunk(owned, CHUNK).map((ids) => this.fetchRemote(ids)));
+    const noRemote = [...this.known.keys()].filter((id) => !this.remote.has(id));
+    if (noRemote.length > 0)
+      await Promise.all(chunk(noRemote, CHUNK).map((ids) => this.fetchRemote(ids)));
     this.render();
   }
 
@@ -101,7 +125,7 @@ export class ListingSvc {
       for (const id of ids) this.known.set(id, found[String(id)] ?? null);
     } catch (e) {
       this.retryAfter = Date.now() + DOWN_BACKOFF_MS;
-      console.warn("[lm-free] listing badges paused 30 s:", errorMessage(e));
+      console.warn("[lm-free] listing chips paused 30 s:", errorMessage(e));
     } finally {
       for (const id of ids) this.inflight.delete(id);
     }
@@ -113,147 +137,271 @@ export class ListingSvc {
       const models = await fetchCivitaiModels(location.origin, ids);
       for (const [id, m] of models) this.remote.set(id, m);
     } catch (e) {
-      console.warn("[lm-free] newer version check skipped:", errorMessage(e));
+      console.warn("[lm-free] civitai details skipped:", errorMessage(e));
     }
   }
 
-  private newerFor(modelId: number): CivitaiVersion | null {
-    const p = this.known.get(modelId);
-    const m = this.remote.get(modelId);
-    if (p == null || m == null) return null;
-    return newerVersion(
-      m.versions,
-      p.versions.map((v) => v.versionId),
-    );
+  private chipsOf(modelId: number): Chip[] {
+    const m = this.remote.get(modelId) ?? null;
+    return chipsFor({
+      presence: this.known.has(modelId) ? (this.known.get(modelId) ?? null) : undefined,
+      remote: m,
+      jobs: this.jobs,
+      target: (v) => (m == null ? null : this.ctx.target(m, v)),
+    });
   }
 
-  /** idempotent: writes only where a chip is missing or stale, so it never feeds the observer a loop */
+  /** idempotent: rebuilds a card's chips only when their content changed, so it never feeds the observer a loop */
   private render(): void {
     for (const c of modelCards()) {
-      const presence = this.known.has(c.modelId) ? (this.known.get(c.modelId) ?? null) : undefined;
-      const want = chipFor(presence, this.jobs.get(c.modelId), this.newerFor(c.modelId));
-      const existing = c.el.querySelector<HTMLElement>(`:scope > [${CHIP_ATTR}]`);
-      if (want == null) {
+      const chips = this.chipsOf(c.modelId);
+      const existing = c.el.querySelector<HTMLElement>(`:scope > [${CHIPS_ATTR}]`);
+      if (chips.length === 0) {
         existing?.remove();
         continue;
       }
-      const chip = existing ?? this.makeChip(c.el, c.modelId);
-      const cls = `lmf-chip ${want.cls}`;
-      if (chip.className !== cls) chip.className = cls;
-      if (chip.textContent !== want.text) chip.textContent = want.text;
+      const box = existing ?? this.makeBox(c.el, c.modelId);
+      const sig = JSON.stringify(chips);
+      if (box.dataset.sig === sig) continue;
+      box.dataset.sig = sig;
+      box.replaceChildren(...chips.map(chipEl));
     }
   }
 
-  private makeChip(card: HTMLAnchorElement, modelId: number): HTMLElement {
+  private makeBox(card: HTMLAnchorElement, modelId: number): HTMLElement {
     if (getComputedStyle(card).position === "static") card.style.position = "relative";
-    const chip = document.createElement("span");
-    chip.setAttribute(CHIP_ATTR, String(modelId));
-    chip.setAttribute("role", "button");
-    // the chip sits inside civitai's <a>: swallow the whole gesture so the card never navigates
+    const box = document.createElement("span");
+    box.className = "lmf-chips";
+    box.setAttribute(CHIPS_ATTR, String(modelId));
+    // the chips sit inside civitai's <a>: swallow the whole gesture so the card never navigates
     const swallow = (e: Event) => {
       e.preventDefault();
       e.stopPropagation();
     };
-    chip.addEventListener("pointerdown", swallow);
-    chip.addEventListener("mousedown", swallow);
-    chip.addEventListener("click", (e) => {
+    box.addEventListener("pointerdown", swallow);
+    box.addEventListener("mousedown", swallow);
+    box.addEventListener("click", (e) => {
       swallow(e);
-      void this.onChipClick(modelId);
+      const el =
+        e.target instanceof Element ? e.target.closest<HTMLElement>("[data-install]") : null;
+      const raw = el?.dataset.install;
+      if (raw == null) return;
+      void this.install(modelId, raw === "" ? null : Number(raw));
     });
-    chip.addEventListener("pointerenter", () => this.tip.show(chip, this.tipInput(modelId)));
-    chip.addEventListener("pointerleave", () => this.tip.hide());
-    card.appendChild(chip);
-    return chip;
+    box.addEventListener("pointerenter", () => this.tip.show(box, this.tipInput(modelId)));
+    box.addEventListener("pointerleave", () => this.tip.hide());
+    card.appendChild(box);
+    return box;
   }
 
   private tipInput(modelId: number): TipInput {
+    const m = this.remote.get(modelId) ?? null;
+    const presence = this.known.get(modelId) ?? null;
     return {
       modelId,
-      presence: this.known.get(modelId) ?? null,
-      remote: this.remote.get(modelId) ?? null,
-      newer: this.newerFor(modelId),
-      job: this.jobs.get(modelId) ?? null,
+      presence,
+      groups:
+        m == null ? [] : baseGroups(m.versions, presence?.versions.map((v) => v.versionId) ?? []),
+      jobs: this.jobs,
+      target: (v) => (m == null ? null : this.ctx.target(m, v)),
     };
   }
 
-  private onChipClick(modelId: number): Promise<void> {
-    const newer = this.newerFor(modelId);
-    if (newer != null) return this.install(modelId, newer.id);
-    if (this.known.get(modelId) != null) return Promise.resolve();
-    return this.install(modelId, null);
-  }
-
-  private setJob(modelId: number, s: DownloadState): void {
+  private setJob(modelId: number, versionId: number, s: DownloadState): void {
     if (s.kind === "done") {
-      this.jobs.delete(modelId);
+      this.jobs.delete(versionId);
       this.known.delete(modelId);
       this.tip.forget(modelId);
     } else {
-      this.jobs.set(modelId, s);
+      this.jobs.set(versionId, s);
     }
     this.schedule();
   }
 
   /** versionId null: civitai's default (first listed) version */
   async install(modelId: number, versionId: number | null): Promise<void> {
-    const job = this.jobs.get(modelId);
-    if (job != null && job.kind !== "failed") return;
-    this.setJob(modelId, { kind: "starting" });
+    const running = versionId != null ? this.jobs.get(versionId) : undefined;
+    if (running != null && running.kind !== "failed") return;
+    let vid = versionId;
     try {
-      const m = await fetchCivitaiModel(location.origin, modelId);
+      const m = this.remote.get(modelId) ?? (await fetchCivitaiModel(location.origin, modelId));
+      this.remote.set(modelId, m);
+      const v = vid != null ? m.versions.find((x) => x.id === vid) : m.versions[0];
+      if (v == null) throw new Error("this model has no such version");
+      vid = v.id;
+      this.setJob(modelId, v.id, { kind: "starting" });
       const prefix = lmPrefixForCivitaiType(m.type);
       if (prefix == null) throw new Error(`Civitai type ${m.type} is not handled`);
-      const v = versionId != null ? m.versions.find((x) => x.id === versionId) : m.versions[0];
-      if (v == null) throw new Error("this model has no such version");
-      const folder = await suggestFolder(prefix, m.tags, parsePageTag(location.href));
-      if (folder.pick.root === "") throw new Error(`LoRA Manager has no ${prefix} root`);
+      await this.ctx.ensure(prefix);
+      const t = this.ctx.target(m, v);
+      if (t == null || t.root === "") throw new Error(`LoRA Manager has no ${prefix} root`);
       const r = await send({
         kind: "startDownload",
         target: {
           modelId,
           versionId: v.id,
           prefix,
-          folder: folder.pick,
+          folder: { root: t.root, sub: t.sub },
           fileId: weightFiles(v)[0]?.id ?? null,
         },
       });
+      const started = v.id;
       watchDownload({
         modelId,
-        versionId: v.id,
+        versionId: started,
         downloadId: r.downloadId,
         isAlive: () => true,
-        onState: (s) => this.setJob(modelId, s),
+        onState: (s) => this.setJob(modelId, started, s),
       });
     } catch (e) {
-      this.setJob(modelId, { kind: "failed", message: errorMessage(e) });
+      if (vid != null) this.setJob(modelId, vid, { kind: "failed", message: errorMessage(e) });
+      else console.warn("[lm-free] install:", errorMessage(e));
     }
   }
 }
 
-/** undefined presence = not answered yet: no chip rather than a guess */
-export function chipFor(
-  presence: Presence | null | undefined,
-  job: DownloadState | undefined,
-  newer: CivitaiVersion | null = null,
-): Chip | null {
-  if (job != null && job.kind !== "idle" && job.kind !== "done") {
-    if (job.kind === "failed") return { cls: "lmf-danger", text: "✕ failed" };
-    if (job.kind === "starting") return { cls: "lmf-hot lmf-busy", text: "⬇ …" };
-    return { cls: "lmf-hot lmf-busy", text: `⬇ ${job.stage ?? `${Math.round(job.percent)}%`}` };
+/** rules, roots and last folders held in memory, so every chip resolves its target synchronously */
+class FolderCtx {
+  private rules: TagRule[] = [];
+  private roots = new Map<LmPrefix, string[]>();
+  private last = new Map<LmPrefix, FolderPick | null>();
+  private loading = new Set<LmPrefix>();
+
+  constructor(
+    private draft: () => TagRule | null,
+    private changed: () => void,
+  ) {
+    void getTagRules().then((r) => {
+      this.rules = r;
+      changed();
+    });
+    onTagRulesChanged((r) => {
+      this.rules = r;
+      changed();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area !== "local") return;
+      if (Object.keys(changes).some((k) => k.startsWith("lastFolder:"))) {
+        this.last.clear();
+        changed();
+      }
+    });
   }
-  if (presence === undefined) return null;
-  if (presence == null) return { cls: "lmf-hot", text: "⬇ Install" };
-  if (newer != null) return { cls: "lmf-hot", text: "⬆ NEWER VERSION" };
-  const n = presence.versions.length;
-  return { cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" };
+
+  forgetRoots(): void {
+    this.roots.clear();
+  }
+
+  async ensure(prefix: LmPrefix): Promise<void> {
+    if (this.roots.has(prefix) && this.last.has(prefix)) return;
+    const [choices, last] = await Promise.all([
+      send({ kind: "folderChoices", prefix }),
+      getLastFolder(prefix),
+    ]);
+    this.roots.set(prefix, choices.roots);
+    this.last.set(prefix, last);
+  }
+
+  /** null until the roots of that type are loaded (a load starts and re-renders when done) */
+  target(m: CivitaiModel, v: CivitaiVersion): Target | null {
+    const prefix = lmPrefixForCivitaiType(m.type);
+    if (prefix == null) return null;
+    const roots = this.roots.get(prefix);
+    if (roots == null || !this.last.has(prefix)) {
+      if (!this.loading.has(prefix)) {
+        this.loading.add(prefix);
+        void this.ensure(prefix)
+          .catch((e: unknown) => console.warn("[lm-free] roots:", errorMessage(e)))
+          .finally(() => {
+            this.loading.delete(prefix);
+            this.changed();
+          });
+      }
+      return null;
+    }
+    const r = resolveFolder({
+      roots,
+      modelTags: m.tags,
+      pageTag: parsePageTag(location.href),
+      rules: withDraft(this.rules, this.draft()),
+      last: this.last.get(prefix) ?? null,
+      baseModel: v.baseModel,
+    });
+    return {
+      root: r.pick.root,
+      rootLabel: rootLabels(roots).get(r.pick.root) ?? r.pick.root,
+      sub: r.pick.sub,
+    };
+  }
+}
+
+export type ChipInput = {
+  /** undefined: LM has not answered yet */
+  presence: Presence | null | undefined;
+  remote: CivitaiModel | null;
+  jobs: ReadonlyMap<number, DownloadState>;
+  target: (v: CivitaiVersion) => Target | null;
+};
+
+const baseName = (g: BaseGroup) => g.base ?? "other";
+
+/** agent/spec.md "listing cards": one chip per base model, or a stand in until civitai's data is in */
+export function chipsFor(p: ChipInput): Chip[] {
+  if (p.presence === undefined) return [];
+  const localIds = p.presence?.versions.map((v) => v.versionId) ?? [];
+  if (p.remote == null) {
+    if (p.presence == null) return [{ cls: "lmf-hot", text: "⬇ Install", install: null }];
+    const n = p.presence.versions.length;
+    return [{ cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" }];
+  }
+  const groups = baseGroups(p.remote.versions, localIds);
+  const chips = groups.slice(0, MAX_BASE_CHIPS).map((g): Chip => {
+    const name = baseName(g);
+    const job = p.jobs.get(g.latest.id);
+    if (job != null && job.kind !== "idle" && job.kind !== "done") {
+      if (job.kind === "failed")
+        return { cls: "lmf-danger", text: `✕ ${name} failed`, install: g.latest.id };
+      const progress = job.kind === "starting" ? "…" : (job.stage ?? `${Math.round(job.percent)}%`);
+      return { cls: "lmf-hot lmf-busy", text: `⬇ ${name} ${progress}` };
+    }
+    if (hasNewer(g)) return { cls: "lmf-hot", text: `⬆ NEWER ${name}`, install: g.latest.id };
+    if (g.have != null) return { cls: "lmf-cool", text: `✓ ${name}` };
+    const t = p.target(g.latest);
+    return t != null
+      ? { cls: "lmf-hot", text: `⬇ ${name}`, install: g.latest.id, target: t }
+      : { cls: "lmf-hot", text: `⬇ ${name}`, install: g.latest.id };
+  });
+  if (groups.length > MAX_BASE_CHIPS)
+    chips.push({ cls: "lmf-more", text: `+${groups.length - MAX_BASE_CHIPS}` });
+  return chips;
+}
+
+function chipEl(c: Chip): HTMLElement {
+  const el = document.createElement("span");
+  el.className = `lmf-chip ${c.cls}`;
+  if (c.install !== undefined) {
+    el.dataset.install = c.install == null ? "" : String(c.install);
+    el.setAttribute("role", "button");
+  }
+  el.append(c.text);
+  if (c.target != null) {
+    const root = document.createElement("span");
+    root.className = "lmf-root";
+    root.textContent = c.target.rootLabel;
+    const sub = document.createElement("span");
+    sub.className = "lmf-sub";
+    sub.textContent = c.target.sub !== "" ? c.target.sub : "(root)";
+    el.append(root, sub);
+  }
+  return el;
 }
 
 export type TipInput = {
   modelId: number;
   presence: Presence | null;
-  remote: CivitaiModel | null;
-  newer: CivitaiVersion | null;
-  job: DownloadState | null;
+  groups: BaseGroup[];
+  jobs: ReadonlyMap<number, DownloadState>;
+  target: (v: CivitaiVersion) => Target | null;
 };
 
 const PREFIX_BY_LM_TYPE: Record<string, LmPrefix> = {
@@ -262,7 +410,7 @@ const PREFIX_BY_LM_TYPE: Record<string, LmPrefix> = {
   embedding: "embeddings",
 };
 
-/** one shared tooltip element for every chip. paths are fetched on first hover of a model, then cached */
+/** one shared tooltip element for every model card. paths are fetched on first hover, then cached */
 class Tip {
   private el: HTMLElement | null = null;
   private anchor: HTMLElement | null = null;
@@ -320,7 +468,7 @@ class Tip {
       this.paths.delete(p.modelId);
       console.warn("[lm-free] tooltip paths:", errorMessage(e));
     }
-    if (this.anchor?.getAttribute(CHIP_ATTR) === String(p.modelId)) this.render(p);
+    if (this.anchor?.getAttribute(CHIPS_ATTR) === String(p.modelId)) this.render(p);
   }
 
   private render(p: TipInput): void {
@@ -348,28 +496,37 @@ function line(l: TipLine): HTMLElement {
 }
 
 export function tipLines(p: TipInput, paths: Map<number, string[]> | undefined): TipLine[] {
-  if (p.job?.kind === "failed")
-    return [{ text: "Install failed", cls: "bad" }, { text: `${p.job.message} (click to retry)` }];
-  if (p.presence == null)
-    return [
-      { text: "Not in your library", cls: "head" },
-      { text: "Click to install the default version", cls: "muted" },
-    ];
-  const out: TipLine[] = [{ text: `In your library (${p.presence.modelType})`, cls: "head" }];
-  for (const v of p.presence.versions) {
-    const base = p.remote?.versions.find((x) => x.id === v.versionId)?.baseModel;
-    out.push({ text: `${v.name}${base != null ? ` · ${base}` : ""}` });
-    const where = paths?.get(v.versionId);
-    if (where == null)
-      out.push({ text: paths == null ? "  locating…" : `  ${v.fileName}`, cls: "muted" });
-    else for (const w of where) out.push({ text: `  ${w}`, cls: "muted" });
+  const out: TipLine[] = [];
+  if (p.presence == null) out.push({ text: "Not in your library", cls: "head" });
+  else {
+    out.push({ text: `In your library (${p.presence.modelType})`, cls: "head" });
+    for (const v of p.presence.versions) {
+      const g = p.groups.find((x) => x.have?.id === v.versionId || x.latest.id === v.versionId);
+      out.push({ text: `${v.name}${g?.base != null ? ` · ${g.base}` : ""}` });
+      const where = paths?.get(v.versionId);
+      if (where == null)
+        out.push({ text: paths == null ? "  locating…" : `  ${v.fileName}`, cls: "muted" });
+      else for (const w of where) out.push({ text: `  ${w}`, cls: "muted" });
+    }
   }
-  if (p.newer != null)
-    out.push({
-      text: `⬆ Newer on Civitai: ${p.newer.name}${p.newer.baseModel != null ? ` · ${p.newer.baseModel}` : ""} (click to install)`,
-      cls: "hot",
-    });
-  else if (p.remote != null) out.push({ text: "✓ Up to date", cls: "cool" });
+  for (const g of p.groups) {
+    const name = baseName(g);
+    const job = p.jobs.get(g.latest.id);
+    if (job?.kind === "failed")
+      out.push({ text: `✕ ${name}: ${job.message} (click to retry)`, cls: "bad" });
+    else if (hasNewer(g))
+      out.push({
+        text: `⬆ ${name}: newer ${g.latest.name} on Civitai (click to install)`,
+        cls: "hot",
+      });
+    else if (g.have != null)
+      out.push({ text: `✓ ${name}: up to date (${g.have.name})`, cls: "cool" });
+    else {
+      const t = p.target(g.latest);
+      const where = t != null ? ` → ${t.rootLabel} › ${t.sub !== "" ? t.sub : "(root)"}` : "";
+      out.push({ text: `⬇ ${name}: ${g.latest.name} not installed${where}`, cls: "muted" });
+    }
+  }
   return out;
 }
 

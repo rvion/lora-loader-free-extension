@@ -1,19 +1,40 @@
 import { expect, test } from "bun:test";
 
-import { chipFor, chunk, tipLines, unknownIds } from "src/content/ListingSvc.ts";
-import type { CivitaiVersion } from "src/shared/civitai.ts";
+import { chipsFor, chunk, tipLines, unknownIds, type Target } from "src/content/ListingSvc.ts";
+import type { CivitaiModel, CivitaiVersion } from "src/shared/civitai.ts";
+import type { DownloadState } from "src/shared/watchDownload.ts";
 
+const ver = (id: number, baseModel: string, publishedAt: string): CivitaiVersion => ({
+  id,
+  name: `v${id}`,
+  baseModel,
+  publishedAt,
+  files: [],
+});
+const model = (...versions: CivitaiVersion[]): CivitaiModel => ({
+  id: 1,
+  name: "m",
+  type: "LORA",
+  tags: [],
+  versions,
+});
 const have = (...ids: number[]) => ({
   modelType: "lora",
   versions: ids.map((id) => ({ versionId: id, name: `v${id}`, fileName: `m${id}.safetensors` })),
 });
-const newer: CivitaiVersion = {
-  id: 9,
-  name: "v9",
-  baseModel: "Krea 2",
-  publishedAt: "2026-09-20",
-  files: [],
-};
+const noJobs = new Map<number, DownloadState>();
+const target = (v: CivitaiVersion): Target => ({
+  root: "/m/loras",
+  rootLabel: "loras",
+  sub: `${v.baseModel?.toLowerCase()}/styles`,
+});
+
+// the screenshot case: one model, versions for Krea 2, Anima and Illustrious
+const kai = model(
+  ver(10, "Krea 2", "2026-09-20"),
+  ver(11, "Anima", "2026-09-10"),
+  ver(12, "Illustrious", "2026-09-01"),
+);
 
 test("only ids neither known nor in flight are fetched, once each", () => {
   const cards = [{ modelId: 1 }, { modelId: 2 }, { modelId: 2 }, { modelId: 3 }, { modelId: 4 }];
@@ -24,40 +45,66 @@ test("ids are sent in chunks", () => {
   expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
 });
 
-test("chip: nothing until LM answered, install when absent, count when several", () => {
-  expect(chipFor(undefined, undefined)).toBeNull();
-  expect(chipFor(null, undefined)).toEqual({ cls: "lmf-hot", text: "⬇ Install" });
-  expect(chipFor(have(1), undefined)?.text).toBe("✓ LM");
-  expect(chipFor(have(1, 2, 3), undefined)?.text).toBe("✓ LM ×3");
-});
-
-test("chip: a newer version beats ✓ LM", () => {
-  expect(chipFor(have(1), undefined, newer)).toEqual({ cls: "lmf-hot", text: "⬆ NEWER VERSION" });
-});
-
-test("chip: a running job wins over presence, a failure is its own state", () => {
-  expect(chipFor(null, { kind: "running", percent: 41.6, stage: null })?.text).toBe("⬇ 42%");
-  expect(chipFor(have(1), { kind: "running", percent: 0, stage: "queued" })?.text).toBe("⬇ queued");
-  expect(chipFor(null, { kind: "failed", message: "early access" })?.cls).toBe("lmf-danger");
-});
-
-test("tooltip: each local version with where it is, then the newer one", () => {
-  const lines = tipLines(
-    { modelId: 1, presence: have(1), remote: null, newer, job: null },
-    new Map([[1, ["loras › krea2/styles / m1.safetensors"]]]),
+test("no chip before LM answers; stand ins before civitai answers", () => {
+  expect(chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target })).toEqual([]);
+  expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target })).toEqual([
+    { cls: "lmf-hot", text: "⬇ Install", install: null },
+  ]);
+  expect(chipsFor({ presence: have(10, 11), remote: null, jobs: noJobs, target })[0]?.text).toBe(
+    "✓ LM ×2",
   );
-  expect(lines.map((l) => l.text)).toEqual([
-    "In your library (lora)",
-    "v1",
-    "  loras › krea2/styles / m1.safetensors",
-    "⬆ Newer on Civitai: v9 · Krea 2 (click to install)",
+});
+
+test("one chip per base model says exactly which one you have", () => {
+  const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target });
+  expect(chips.map((c) => [c.text, c.install ?? "-", c.target?.sub ?? "-"])).toEqual([
+    ["✓ Krea 2", "-", "-"],
+    ["⬇ Anima", 11, "anima/styles"],
+    ["⬇ Illustrious", 12, "illustrious/styles"],
   ]);
 });
 
-test("tooltip: paths not fetched yet read as locating", () => {
+test("a later version of a base you have is flagged newer and installs that one", () => {
+  const m = model(ver(20, "Krea 2", "2026-09-01"), ver(21, "Krea 2", "2026-09-20"));
+  expect(chipsFor({ presence: have(20), remote: m, jobs: noJobs, target })).toEqual([
+    { cls: "lmf-hot", text: "⬆ NEWER Krea 2", install: 21 },
+  ]);
+});
+
+test("jobs show on their base chip; past four bases a +N chip", () => {
+  const jobs = new Map<number, DownloadState>([
+    [11, { kind: "running", percent: 41.6, stage: null }],
+  ]);
+  expect(chipsFor({ presence: null, remote: kai, jobs, target })[1]?.text).toBe("⬇ Anima 42%");
+  const many = model(...["A", "B", "C", "D", "E", "F"].map((b, i) => ver(30 + i, b, "2026-09-01")));
+  const chips = chipsFor({ presence: null, remote: many, jobs: noJobs, target });
+  expect(chips).toHaveLength(5);
+  expect(chips[4]).toEqual({ cls: "lmf-more", text: "+2" });
+});
+
+test("tooltip: local versions with their place, then one line per base", () => {
   const lines = tipLines(
-    { modelId: 1, presence: have(1), remote: null, newer: null, job: null },
-    undefined,
+    {
+      modelId: 1,
+      presence: have(10),
+      groups: [
+        {
+          base: "Krea 2",
+          latest: ver(10, "Krea 2", "2026-09-20"),
+          have: ver(10, "Krea 2", "2026-09-20"),
+        },
+        { base: "Anima", latest: ver(11, "Anima", "2026-09-10"), have: null },
+      ],
+      jobs: noJobs,
+      target,
+    },
+    new Map([[10, ["loras › krea2/styles / m10.safetensors"]]]),
   );
-  expect(lines[2]).toEqual({ text: "  locating…", cls: "muted" });
+  expect(lines.map((l) => l.text)).toEqual([
+    "In your library (lora)",
+    "v10 · Krea 2",
+    "  loras › krea2/styles / m10.safetensors",
+    "✓ Krea 2: up to date (v10)",
+    "⬇ Anima: v11 not installed → loras › anima/styles",
+  ]);
 });
