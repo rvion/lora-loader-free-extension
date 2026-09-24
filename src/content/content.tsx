@@ -7,7 +7,6 @@ import {
   CARD_HOST_ID,
   createHost,
   placeHost,
-  RAIL_DOCK,
   TAG_HOST_ID,
   UNDER_HEADER_DOCK,
 } from "src/content/dock.ts";
@@ -28,7 +27,7 @@ function mount(): void {
     st.placement.setActual(
       placeHost(card.host, {
         visible: st.page.isModelPage,
-        dock: RAIL_DOCK,
+        dock: UNDER_HEADER_DOCK,
         free: st.placement.mode === "free",
         hasPos: st.placement.pos != null,
       }),

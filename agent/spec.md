@@ -2,10 +2,11 @@
 
 ## The card (civitai model pages)
 
-Placement: see "Dock and free mode" below. Its dock is civitai's right rail
-on desktop model pages (`[class*="-module__"][class*="__rail"]`), in place
-of the rail ad, which is hidden while the card is docked there. Floating
-default: bottom right.
+Placement: see "Dock and free mode" below. Its dock is a full width strip
+right under civitai's header (the same spot as the tag bar, which never
+shows on a model page), laid out in one wrapping row: title, status, file,
+folder, actions. It stays when the window shrinks, mobile included.
+Floating default: bottom right, as a vertical card.
 
 Appears on `https://civitai.com/models/<id>` and
 `https://civitai.red/models/<id>`, for the version in `?modelVersionId=`
@@ -63,6 +64,15 @@ Controls, in the overlay's header:
 - **⇲** (shown while floating): try docking again. When the page has no
   dock spot, a short "nothing to dock into on this page" note shows for a
   few seconds.
+
+## Ads
+
+Civitai's ads are removed, visibly: each ad container gets a red glowing
+ring with a "✕ ad removed" label, fades and shrinks out over ~1.4 s, then is
+hidden. An ad container is the bottom ad bar (`[data-adhesive-ad]`), or the
+nearest wrapper of a `visit advertiser` link: the right rail on model pages,
+or the ad box in a grid. A container civitai re-renders is caught again on
+the next pass. No setting: always on.
 
 ## Look: impossible to miss
 

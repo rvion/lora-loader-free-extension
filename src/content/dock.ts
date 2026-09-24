@@ -52,7 +52,7 @@ export function placeHost(host: HTMLElement, p: Placement): HostMode {
     mode = "docked";
     if (p.dock.how === "append") {
       if (host.parentElement !== anchor) anchor.appendChild(host);
-    } else if (anchor.nextElementSibling !== host) {
+    } else if (!inRunAfter(anchor, host)) {
       anchor.insertAdjacentElement("afterend", host);
     }
   } else {
@@ -61,4 +61,17 @@ export function placeHost(host: HTMLElement, p: Placement): HostMode {
   }
   if (host.dataset.mode !== mode) host.dataset.mode = mode;
   return mode;
+}
+
+const OUR_HOSTS = new Set([CARD_HOST_ID, TAG_HOST_ID]);
+
+/** true when host sits in the run of our hosts right after anchor: two docked hosts never swap forever */
+function inRunAfter(anchor: Element, host: HTMLElement): boolean {
+  for (
+    let el = anchor.nextElementSibling;
+    el != null && OUR_HOSTS.has(el.id);
+    el = el.nextElementSibling
+  )
+    if (el === host) return true;
+  return false;
 }

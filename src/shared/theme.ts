@@ -34,8 +34,15 @@ ${GLOW_CSS}
 .lmf-chip.lmf-hot, .lmf-chip.lmf-danger { cursor: pointer; }
 .lmf-chip.lmf-hot:hover { transform: scale(1.08); }
 .lmf-chip.lmf-busy { cursor: progress; }
-/* the docked card replaces the rail ad, only while it is there */
-[class*="-module__"][class*="__rail"]:has(> #lora-manager-free-card) > :not(#lora-manager-free-card) { display: none !important; }
-/* docked tag bar: its own strip in civitai's header/content flex column */
-#lmf-tagbar-host { flex: none; }
+/* ads: a red ring and a label so the removal is visible, then out (compositor only: opacity, transform) */
+.lmf-ad-kill { position: relative !important; overflow: hidden !important; outline: 3px solid #ff1744 !important;
+  outline-offset: -3px; box-shadow: inset 0 0 24px 6px rgba(255, 23, 68, .7) !important;
+  animation: lmf-ad-out 1.4s ease-in forwards; transform-origin: center; }
+.lmf-ad-kill::before { content: "✕ ad removed"; position: absolute; z-index: 2; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); padding: 4px 12px; border-radius: 999px; background: ${HOT}; color: #fff;
+  font: 800 13px/18px system-ui, -apple-system, sans-serif; border: 2px solid #fff; white-space: nowrap; }
+@keyframes lmf-ad-out { 0%, 45% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9); } }
+.lmf-ad-gone { display: none !important; }
+/* docked strips: their own rows in civitai's header/content flex column */
+#lmf-tagbar-host, #lora-manager-free-card { flex: none; }
 `;

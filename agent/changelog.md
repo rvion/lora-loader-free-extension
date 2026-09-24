@@ -5,6 +5,11 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- AdSvc removes ads with a visible red ring and fade. The card docks under
+  the header as a one row strip: the right rail vanished below civitai's
+  desktop breakpoint and took the docked card with it. placeHost keeps any
+  run of our hosts after the anchor in place, so two strips cannot swap.
+
 - Dock and free mode for both overlays (PlacementSvc, Movable, generic
   placeHost with append or insert after). The tag bar docks as its own strip
   after `#main header`, checked against civitai's served html: header and

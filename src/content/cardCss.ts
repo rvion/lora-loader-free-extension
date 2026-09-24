@@ -8,8 +8,23 @@ ${GLOW_CSS}
 .wrap { z-index: 2147483000; }
 :host([data-mode="floating"]) .wrap { position: fixed; right: 18px; bottom: 18px; }
 :host([data-mode="custom"]) .wrap { position: fixed; }
-:host([data-mode="docked"]) .wrap { position: relative; padding: 8px 4px; }
-:host([data-mode="docked"]) .card { width: 100%; max-width: 340px; }
+/* docked: a full width strip under civitai's header, one wrapping row */
+:host([data-mode="docked"]) .wrap { position: relative; padding: 6px 10px; background: #141517;
+  border-bottom: 1px solid #373a40; }
+:host([data-mode="docked"]) .card { width: 100%; display: flex; flex-wrap: wrap; align-items: center;
+  gap: 6px 14px; padding: 8px 12px; }
+:host([data-mode="docked"]) .card > header { margin: 0; gap: 6px; }
+:host([data-mode="docked"]) .card > .title { max-width: 280px; }
+:host([data-mode="docked"]) .card > .sub { margin: 0; }
+:host([data-mode="docked"]) .card > p { margin: 0; }
+:host([data-mode="docked"]) .card > .folder { display: flex; align-items: flex-end; gap: 8px; margin: 0; }
+:host([data-mode="docked"]) .card > .folder select { width: 200px; }
+:host([data-mode="docked"]) .card > .folder input { width: 160px; }
+:host([data-mode="docked"]) .card > .folder .rule { align-self: center; }
+:host([data-mode="docked"]) .card > .progress { flex: 1 1 160px; margin: 0; }
+:host([data-mode="docked"]) .card > .actions { margin: 0 0 0 auto; }
+:host([data-mode="docked"]) .card > .actions .primary { flex: none; min-width: 140px; }
+:host([data-mode="docked"]) .card > .server, :host([data-mode="docked"]) .card > .docknote { flex-basis: 100%; }
 header { cursor: grab; touch-action: none; user-select: none; }
 header:active { cursor: grabbing; }
 .card, .tagbar {

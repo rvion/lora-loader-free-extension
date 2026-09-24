@@ -75,14 +75,28 @@ tick and at once on a mode or pos change (a mobx reaction per overlay).
 
 | overlay | dock | floating default |
 |---|---|---|
-| card (`#lora-manager-free-card`) | appended into the right rail `[class*="-module__"][class*="__rail"]` | bottom right |
-| tag bar (`#lmf-tagbar-host`) | inserted after `#main header` (header and content are siblings in a flex column, content scrolls in its own `.scroll-area`) | bottom left |
+| card (`#lora-manager-free-card`) | inserted after `#main header`, horizontal strip | bottom right |
+| tag bar (`#lmf-tagbar-host`) | inserted after `#main header` | bottom left |
+
+Header and content are siblings in a flex column and the content scrolls in
+its own `.scroll-area`, so a strip there stays visible at every width. The
+card and the tag bar never show on the same page; `placeHost` still treats
+any run of our hosts right after the anchor as "in place", so two docked
+hosts could never swap forever. The right rail is not a dock: civitai hides
+it below its desktop breakpoint, and the card vanished with it.
 
 Host modes (`data-mode`, styled with `:host([data-mode=…])`): `docked`,
-`floating` (default corner), `custom` (at `pos`). The rail ad is hidden by
-the page css rule `rail:has(> #card-host) > :not(#card-host)`, so civitai
-re-rendering the ad cannot bring it back while docked. Drags listen on
-window: undocking re-parents the host, which would release pointer capture.
+`floating` (default corner), `custom` (at `pos`). Drags listen on window:
+undocking re-parents the host, which would release pointer capture.
+
+## Ads
+
+`AdSvc` (on `CardSt`): one debounced MutationObserver. Each pass finds ad
+containers (`[data-adhesive-ad]`, else the closest `[class*="__rail"]` or
+`.box-content` around `a[aria-label="visit advertiser"]`) not yet marked,
+adds `lmf-ad-kill` (red ring, label, opacity and transform keyframes), then
+`lmf-ad-gone` (`display: none`) on `animationend` or after 1.6 s. Both
+classes live in PAGE_CSS.
 
 ## Folder choice
 

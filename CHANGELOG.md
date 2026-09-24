@@ -8,11 +8,13 @@
 - Tag rules: map a Civitai tag to a root and subfolder from the bar on any
   tag page. Rules apply everywhere by the model's tags, first rule wins, and
   can be reordered in the popup.
-- Dock and free mode for the card and the tag bar. Docked, the card sits in
-  Civitai's right rail (in place of the rail ad) and the tag bar becomes its
-  own strip under Civitai's header. Free, they float wherever you drag
+- Dock and free mode for the card and the tag bar. Docked, each becomes its
+  own strip under Civitai's header (the card as one compact row), which
+  stays at every window width, mobile included. Free, they float wherever you drag
   them, and the spot is saved. ⇱ undocks, ⇲ docks again and says so when the
   page has no spot for it.
+- Civitai's ads are removed, visibly: a red ring and a "✕ ad removed" label,
+  then they fade out.
 - Much louder look: glowing gradients with a slow, GPU cheap pulse, green
   for "have it", red and orange for "get it".
 - File picker on the card when a version has several weight files (fp16,

@@ -15,6 +15,7 @@ import {
 import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts";
 import type { LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
+import { AdSvc } from "src/content/AdSvc.ts";
 import { ListingSvc } from "src/content/ListingSvc.ts";
 import { PlacementSvc } from "src/content/PlacementSvc.ts";
 import { TagSvc } from "src/content/TagSvc.ts";
@@ -44,6 +45,7 @@ export class CardSt {
   restart: RestartSt;
   file: FileSvc;
   listing: ListingSvc;
+  ads: AdSvc;
   placement: PlacementSvc;
   tag: TagSvc;
   collapsed = false;
@@ -53,6 +55,7 @@ export class CardSt {
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
     this.listing = new ListingSvc();
+    this.ads = new AdSvc();
     this.placement = new PlacementSvc("card");
     this.tag = new TagSvc();
     this.restart = new RestartSt({
@@ -77,6 +80,7 @@ export class CardSt {
       restart: false,
       file: false,
       listing: false,
+      ads: false,
       placement: false,
       tag: false,
     });
