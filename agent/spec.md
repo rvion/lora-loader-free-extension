@@ -22,10 +22,12 @@ Appears on `https://civitai.com/models/<id>` and
 (else the model's first version). Follows SPA navigation: switching version
 or model updates the card without a reload. Collapsible to a small pill.
 
-Header: model name, version name, Civitai type. A ⚙ button opens the
-server URL field (same setting as the popup: ComfyUI host, IP or full URL,
-e.g. `192.168.1.20:8188`). The field also opens by itself whenever LoRA
-Manager is unreachable. Saving it, from the card or the popup, re-checks the
+The ⚙ tool opens a **popover** anchored under it (never inline: the docked
+row must keep its shape) with the server URL field (same setting as the
+popup: ComfyUI host, IP or full URL, e.g. `192.168.1.20:8188`) and Restart
+ComfyUI. It closes on ⚙, ✕, Esc or a click outside. It also opens by itself
+when LoRA Manager is unreachable; once closed it stays closed until the
+address is saved again. Saving it, from the card or the popup, re-checks the
 card at once.
 
 Status line, one of:
@@ -169,7 +171,7 @@ A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
   runs 5 at a time and queues the rest. Each row shows its progress, and a
   row leaves the list once its version is in the library).
 
-## Restart ComfyUI (card ⚙ panel and popup)
+## Restart ComfyUI (card ⚙ popover and popup)
 
 A **Restart ComfyUI** button, with an inline "Really restart?" confirm (it
 kills a running generation). Needs the ComfyUI-Manager custom node. Then a

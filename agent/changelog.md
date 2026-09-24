@@ -5,6 +5,10 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- ⚙ settings (address + restart) moved from an inline panel to a popover
+  under the tools: inline it broke the docked row. Auto opens when LM is
+  unreachable, `dismissed` keeps it closed until the address is saved.
+
 - Docked row reworked from the owner's screenshot: no title (the page shows
   it), version chip (hover details, click to switch version in the card
   only, pickVersion), tools moved last, subfolder combobox styled as a select

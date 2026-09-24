@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { obs } from "rvlib-mobx";
 
 import type { CardSt } from "src/content/CardSt.ts";
@@ -40,27 +40,52 @@ export const Card = obs(function Card(p: { st: CardSt }) {
       <span className="tools">
         <DockButton place={st.placement} />
         <button
-          className={st.server.isEditing ? "icon on" : "icon"}
+          className={st.server.isOpen ? "icon on" : "icon"}
           onClick={() => st.server.toggleEditing()}
           title="Server address"
         >
           ⚙
         </button>
+        {st.server.isOpen && <ServerPopover st={st} />}
         {!st.placement.isDocked && (
           <button className="icon" onClick={() => st.toggleCollapsed()} title="Collapse">
             –
           </button>
         )}
       </span>
-      {st.server.isOpen && <ServerField st={st} />}
     </div>
   );
 });
 
-const ServerField = obs(function ServerField(p: { st: CardSt }) {
+/** the ⚙ popover: anchored under the tools, never inline, so the docked row keeps its shape */
+const ServerPopover = obs(function ServerPopover(p: { st: CardSt }) {
   const sv = p.st.server;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // outside click: our events come from inside a shadow root, so test the composed path
+    const onDown = (e: PointerEvent) => {
+      const el = ref.current;
+      const tools = el?.parentElement;
+      if (tools != null && !e.composedPath().includes(tools)) sv.close();
+    };
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [sv]);
   return (
-    <div className="server">
+    <div
+      className="popover"
+      ref={ref}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") sv.close();
+      }}
+    >
+      <div className="popover-head">
+        <span>LoRA Manager server</span>
+        <button className="icon" onClick={() => sv.close()} title="Close">
+          ✕
+        </button>
+      </div>
+      {sv.lmUnreachable && <p className="error">LoRA Manager does not answer at {sv.url}</p>}
       <label>
         ComfyUI / LoRA Manager address
         <span className="row">

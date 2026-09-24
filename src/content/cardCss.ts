@@ -27,7 +27,7 @@ ${GLOW_CSS}
 :host([data-mode="docked"]) .card > .actions { margin: 0; }
 :host([data-mode="docked"]) .card > .actions .primary { flex: none; min-width: 100px; }
 :host([data-mode="docked"]) .card > .where { max-width: 520px; }
-:host([data-mode="docked"]) .card > .server, :host([data-mode="docked"]) .card > .docknote { flex-basis: 100%; }
+:host([data-mode="docked"]) .card > .docknote { flex-basis: 100%; }
 header { cursor: grab; touch-action: none; user-select: none; }
 header:active { cursor: grabbing; }
 .card, .tagbar {
@@ -72,7 +72,12 @@ button.primary { flex: 1; font-size: 13px; font-weight: 800; padding: 5px 10px; 
 button.icon { padding: 0 6px; background: none; border: none; font-size: 15px; color: #adb5bd; }
 button.icon.on { color: #ffa94d; }
 button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px; }
-.server { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #373a40; }
+.tools { position: relative; }
+.popover { position: absolute; z-index: 20; top: calc(100% + 8px); right: -4px; width: 320px; padding: 8px 10px;
+  text-align: left; cursor: default; background: #1f2023; border: 1px solid #5c5f66; border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.65); }
+.popover-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800;
+  font-size: 12px; margin-bottom: 6px; }
 .row { display: flex; gap: 6px; }
 .row input { flex: 1; min-width: 0; }
 .restart { margin-top: 8px; }

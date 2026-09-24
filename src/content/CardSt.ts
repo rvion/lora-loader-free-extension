@@ -128,6 +128,8 @@ export class ServerSvc {
   url = "";
   draft = "";
   isEditing = false;
+  /** the user closed the auto opened popover: stays closed until the address is saved again */
+  dismissed = false;
   saveError: string | null = null;
 
   constructor(private st: CardSt) {
@@ -142,32 +144,44 @@ export class ServerSvc {
     this.draft = url;
     if (changed && recheck) {
       this.isEditing = false;
+      this.dismissed = false;
       void this.st.refreshForVersion();
     }
   }
 
   toggleEditing(): void {
-    this.isEditing = !this.isEditing;
+    if (this.isOpen) return this.close();
+    this.isEditing = true;
     this.draft = this.url;
     this.saveError = null;
+  }
+
+  close(): void {
+    this.isEditing = false;
+    this.dismissed = true;
+  }
+
+  get lmUnreachable(): boolean {
+    return this.st.library.status.error != null || this.st.folder.choices.error != null;
   }
 
   setDraft(v: string): void {
     this.draft = v;
   }
 
-  /** open while editing, and on its own whenever LM cannot be reached */
+  /** open while editing, and on its own when LM cannot be reached until the user closes it */
   get isOpen(): boolean {
-    return (
-      this.isEditing || this.st.library.status.error != null || this.st.folder.choices.error != null
-    );
+    return this.isEditing || (this.lmUnreachable && !this.dismissed);
   }
 
   async save(): Promise<void> {
     this.saveError = null;
     try {
       const saved = await saveLmUrl(this.draft);
-      runInAction(() => (this.draft = saved));
+      runInAction(() => {
+        this.draft = saved;
+        this.dismissed = false;
+      });
       if (saved === this.url) void this.st.refreshForVersion();
     } catch (e) {
       runInAction(() => (this.saveError = errorMessage(e)));
