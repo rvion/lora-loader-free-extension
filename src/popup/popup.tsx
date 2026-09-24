@@ -5,6 +5,7 @@ import { obs } from "rvlib-mobx";
 import { PopupSt, type Launched } from "src/popup/PopupSt.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 import type { MarkedItem } from "src/shared/storage.ts";
+import { GLOW_CSS } from "src/shared/theme.ts";
 import type { DownloadState } from "src/shared/watchDownload.ts";
 
 configure({ enforceActions: "always" });
@@ -16,6 +17,7 @@ const Popup = obs(function Popup(p: { st: PopupSt }) {
       <h1>LoRA Manager</h1>
       <Connection st={st} />
       <Marked st={st} />
+      <Rules st={st} />
     </main>
   );
 });
@@ -44,7 +46,7 @@ const Connection = obs(function Connection(p: { st: PopupSt }) {
           Test
         </button>
         {st.isDirty && (
-          <button className="primary" onClick={() => void st.saveUrl()}>
+          <button className="primary lmf-hot" onClick={() => void st.saveUrl()}>
             Save
           </button>
         )}
@@ -81,13 +83,49 @@ const Marked = obs(function Marked(p: { st: PopupSt }) {
       </ul>
       {st.marked.length > 0 && (
         <button
-          className="primary wide"
+          className="primary wide lmf-hot"
           disabled={st.isLaunching}
           onClick={() => void st.downloadAll()}
         >
           {st.isLaunching ? "Starting…" : `Download all (${st.marked.length})`}
         </button>
       )}
+    </section>
+  );
+});
+
+const Rules = obs(function Rules(p: { st: PopupSt }) {
+  const st = p.st;
+  return (
+    <section>
+      <h2>Tag rules ({st.rules.length})</h2>
+      {st.rules.length === 0 && (
+        <p className="muted">No rule yet. Open a Civitai tag page (models?tag=…) to add one.</p>
+      )}
+      <ul>
+        {st.rules.map((r, i) => (
+          <li key={r.tag}>
+            <div className="item">
+              <div className="name"># {r.tag}</div>
+              <div className="muted">
+                → {r.root != null ? (r.root.split(/[\\/]/).pop() ?? r.root) : "(last used root)"}
+                {r.sub !== "" ? `/${r.sub}` : ""}
+              </div>
+            </div>
+            <button
+              className="icon"
+              title="Higher priority"
+              disabled={i === 0}
+              onClick={() => void st.moveRuleUp(r.tag)}
+            >
+              ↑
+            </button>
+            <button className="icon" title="Delete" onClick={() => void st.deleteRule(r.tag)}>
+              ×
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 });
@@ -143,6 +181,10 @@ function StateText(p: { state: DownloadState }) {
       return <span className="good">✓</span>;
   }
 }
+
+const glow = document.createElement("style");
+glow.textContent = GLOW_CSS;
+document.head.appendChild(glow);
 
 const rootEl = document.getElementById("root");
 if (rootEl == null) throw new Error("popup.html lacks #root");

@@ -40,16 +40,59 @@ Controls (hidden when in library):
 - **Mark** / **Unmark**: adds or removes this version (with the picked
   folder) from the marked list.
 
-## Listing badges (every civitai page)
+## Look: impossible to miss
 
-Every model card on Civitai (a link to `/models/<id>` that holds an image or
-video: home, search, browse, creator pages, suggestions) gets a small green
-badge at its top left when that model is in the library: `✓ LM`, or
-`✓ LM ×2` when several of its versions are. Models not in the library get no
-badge. New cards (infinite scroll, SPA navigation) are badged as they
-appear, with one batched call per ~100 new ids. A finished download or a
-ComfyUI restart re-checks. LM unreachable → no badges, no error spam (the
-card already reports it).
+Civitai is visually loud, so everything the extension adds is louder:
+- actionable things (⬇ Install, Download, the card frame, the tag bar): a
+  red → orange → yellow gradient, white bold text, and a halo that pulses
+  slowly;
+- "in library" things (✓ LM badges, the card status): a green → cyan
+  gradient with the same halo, so "have it" and "get it" never look alike.
+
+The pulse is an `opacity` animation on a `::after` halo layer, which the
+compositor runs without layout or paint (no box-shadow animation). It stops
+under `prefers-reduced-motion`.
+
+## Listing cards (every civitai page)
+
+Every model card (a link to `/models/<id>` that holds an image or video:
+home, search, browse, tag pages, creator pages, suggestions) gets, at its top
+left, once LM has answered for it:
+
+| state | shown |
+|---|---|
+| in library | green `✓ LM`, or `✓ LM ×N` when N versions are |
+| not in library | glowing `⬇ Install` button |
+| installing | `⬇ 42%`, or the stage text (`queued`, …) |
+| failed | red `✕ failed`, the error as tooltip. Click to retry |
+
+⬇ Install downloads the model's latest version (Civitai's first), its
+primary file, into the folder the tag rules give (below), else the last
+folder used for that model type. The click never opens the model page.
+When the file is in the library the button turns into ✓ LM.
+
+New cards (infinite scroll, SPA navigation) get badges as they appear, with
+one batched call per ~100 new ids. LM unreachable → no badges, retried every
+30 s.
+
+## Tag rules (tag → folder)
+
+A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
+
+- **Where the folder comes from**, for the card and for ⬇ Install: on a tag
+  page (`/models?tag=concept`, `/tag/concept`) that page's tag rule wins;
+  otherwise the first rule, in list order, matching one of the model's tags;
+  otherwise the last folder used for that model type. A rule's root only
+  applies when it is a root of the model's type (a LoRA root never applies
+  to a checkpoint); the subfolder always does.
+- **Tag bar**: on a tag page, a glowing bar fixed at the top center reads
+  `Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved rule
+  with Delete. Roots offered are the LoRA roots, plus "(last used root)". It
+  folds to a pill.
+- The card shows `Folder from rule: concept` under the folder picker when a
+  rule chose it. Editing the folder there changes this download only (and
+  the last used folder), never the rule.
+- **Popup**: a Rules list, each row with ↑ (move up) and ×.
 
 ## The popup
 

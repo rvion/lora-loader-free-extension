@@ -8,8 +8,12 @@ export const Card = obs(function Card(p: { st: CardSt }) {
   if (!st.page.isModelPage) return null;
   if (st.collapsed)
     return (
-      <button className="pill" onClick={() => st.toggleCollapsed()} title="LoRA Manager">
-        <StatusDot st={st} /> LM
+      <button
+        className={`pill ${st.library.inLibrary ? "lmf-cool" : "lmf-hot"}`}
+        onClick={() => st.toggleCollapsed()}
+        title="LoRA Manager"
+      >
+        <StatusDot st={st} /> {st.library.inLibrary ? "✓ LM" : "⬇ LM"}
       </button>
     );
   return (
@@ -108,7 +112,7 @@ const LibraryLine = obs(function LibraryLine(p: { st: CardSt }) {
     );
   if (s.isRunning && s.result == null) return <p className="muted">Checking library…</p>;
   if (s.result?.exists === true)
-    return <p className="good-text">✓ In library ({s.result.modelType})</p>;
+    return <p className="status lmf-cool">✓ In library ({s.result.modelType})</p>;
   return <p className="muted">Not in library</p>;
 });
 
@@ -128,7 +132,7 @@ const Controls = obs(function Controls(p: { st: CardSt }) {
       {d.kind === "failed" && <p className="error">{d.message}</p>}
       <div className="actions">
         <button
-          className="primary"
+          className="primary lmf-hot"
           disabled={st.download.isBusy || st.folder.pick.root === ""}
           onClick={() => void st.download.start()}
         >
@@ -199,6 +203,7 @@ const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
           ))}
         </datalist>
       </label>
+      {f.via != null && <p className="rule">Folder from rule: {f.via}</p>}
     </div>
   );
 });
@@ -207,3 +212,62 @@ function shortRoot(root: string): string {
   const parts = root.split(/[\\/]/).filter((s) => s !== "");
   return parts.length <= 2 ? root : `…/${parts.slice(-2).join("/")}`;
 }
+
+export const TagBar = obs(function TagBar(p: { st: CardSt }) {
+  const t = p.st.tag;
+  if (t.pageTag == null) return null;
+  if (t.minimized)
+    return (
+      <button className="tagpill lmf-hot" onClick={() => t.toggleMinimized()} title="Tag rule">
+        # {t.pageTag}
+        {t.rule != null ? " ✓" : ""}
+      </button>
+    );
+  const roots = t.roots.result?.roots ?? [];
+  return (
+    <div className="tagbar">
+      <span className="tagname">
+        Tag <b>{t.pageTag}</b> →
+      </span>
+      <select
+        value={t.draftRoot}
+        onChange={(e) => t.setDraftRoot(e.currentTarget.value)}
+        title={t.draftRoot}
+      >
+        <option value="">(last used root)</option>
+        {roots.map((r) => (
+          <option key={r} value={r}>
+            {shortRoot(r)}
+          </option>
+        ))}
+      </select>
+      <span>/</span>
+      <input
+        value={t.draftSub}
+        placeholder="(root)"
+        spellCheck={false}
+        onChange={(e) => t.setDraftSub(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void t.save();
+        }}
+      />
+      {t.isDirty ? (
+        <button className="lmf-hot" onClick={() => void t.save()}>
+          {t.rule == null ? "Save rule" : "Update rule"}
+        </button>
+      ) : (
+        <span className="saved lmf-cool">✓ rule saved</span>
+      )}
+      {t.rule != null && (
+        <button onClick={() => void t.remove()} title="Delete this rule">
+          Delete
+        </button>
+      )}
+      <button className="icon" onClick={() => t.toggleMinimized()} title="Fold">
+        –
+      </button>
+      {t.roots.error != null && <span className="error">{t.roots.error.message}</span>}
+      {t.saveError != null && <span className="error">{t.saveError}</span>}
+    </div>
+  );
+});

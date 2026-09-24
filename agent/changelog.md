@@ -3,6 +3,13 @@
 Newest first. Each entry narrates WHAT changed and WHY, for the next
 session that arrives with no context.
 
+## 2026-09-24
+
+- ⬇ Install on every listing card (ListingSvc, renamed from BadgeSvc),
+  tag → folder rules (folderRules.ts, TagSvc, tag bar, popup list) and the
+  loud theme (theme.ts). The owner could not spot the old pills on
+  civitai's busy pages, hence the glow.
+
 ## 2026-09-23
 
 - v1.0.0 tagged: the version the owner confirmed working live.

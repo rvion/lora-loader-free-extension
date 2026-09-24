@@ -12,13 +12,14 @@ import {
   type CivitaiVersion,
   type LmPrefix,
 } from "src/shared/civitai.ts";
-import type { FolderChoices, LibraryStatus } from "src/shared/lmClient.ts";
+import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts";
+import type { LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
-import { BadgeSvc } from "src/content/BadgeSvc.ts";
+import { ListingSvc } from "src/content/ListingSvc.ts";
+import { TagSvc } from "src/content/TagSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
 import {
-  getLastFolder,
   getMarked,
   getSettings,
   onMarkedChanged,
@@ -41,19 +42,21 @@ export class CardSt {
   server: ServerSvc;
   restart: RestartSt;
   file: FileSvc;
-  badges: BadgeSvc;
+  listing: ListingSvc;
+  tag: TagSvc;
   collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
     this.server = new ServerSvc(this);
     this.file = new FileSvc(this);
-    this.badges = new BadgeSvc();
+    this.listing = new ListingSvc();
+    this.tag = new TagSvc();
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
       ping: () => send({ kind: "ping" }),
       onBack: () => {
-        this.badges.forgetAll();
+        this.listing.forgetAll();
         void this.refreshForVersion();
       },
     });
@@ -70,7 +73,8 @@ export class CardSt {
       server: false,
       restart: false,
       file: false,
-      badges: false,
+      listing: false,
+      tag: false,
     });
   }
 
@@ -80,6 +84,7 @@ export class CardSt {
 
   /** called on every url change the page makes */
   onUrl(href: string): void {
+    this.tag.onUrl(href);
     const ref = parseCivitaiModelUrl(href);
     if (!this.page.setRef(ref)) return;
     this.download.reset();
@@ -95,7 +100,7 @@ export class CardSt {
     if (m == null || v == null || prefix == null) return;
     await Promise.all([
       this.library.check(),
-      this.folder.load(prefix),
+      this.folder.load(prefix, m.tags),
       this.download.resume(m.id, v.id),
     ]);
   }
@@ -263,40 +268,48 @@ export class LibrarySvc {
 }
 
 export class FolderSvc {
-  choices: Query<FolderChoices>;
+  choices: Query<FolderSuggestion>;
   pick: FolderPick = { root: "", sub: "" };
+  /** the rule tag that chose the current pick, null once edited by hand */
+  via: string | null = null;
   private prefix: LmPrefix | null = null;
+  private tags: string[] = [];
 
   constructor(private st: CardSt) {
     this.choices = new Query(() => {
       const prefix = this.prefix;
       if (prefix == null) return Promise.reject(new Error("unsupported model type"));
-      return send({ kind: "folderChoices", prefix });
+      return suggestFolder(prefix, this.tags, null);
     });
-    makeAutoObservable<FolderSvc, "st" | "prefix">(this, {
+    makeAutoObservable<FolderSvc, "st" | "prefix" | "tags">(this, {
       st: false,
       choices: false,
       prefix: false,
+      tags: false,
     });
   }
 
-  async load(prefix: LmPrefix): Promise<void> {
+  async load(prefix: LmPrefix, tags: string[]): Promise<void> {
     this.prefix = prefix;
-    const [last] = await Promise.all([getLastFolder(prefix), this.choices.run()]);
+    this.tags = tags;
+    await this.choices.run();
     runInAction(() => {
-      const roots = this.choices.result?.roots ?? [];
-      const root = last != null && roots.includes(last.root) ? last.root : (roots[0] ?? "");
-      this.pick = { root, sub: last?.sub ?? "" };
+      const r = this.choices.result;
+      if (r == null) return;
+      this.pick = r.pick;
+      this.via = r.via;
     });
   }
 
   setRoot(root: string): void {
     this.pick = { ...this.pick, root };
+    this.via = null;
     this.remember();
   }
 
   setSub(sub: string): void {
     this.pick = { ...this.pick, sub: normalizeSub(sub) };
+    this.via = null;
     this.remember();
   }
 
@@ -331,7 +344,7 @@ export class DownloadSvc {
     this.state = s;
     if (s.kind === "done") {
       const id = this.st.page.model.result?.id;
-      if (id != null) this.st.badges.forget(id);
+      if (id != null) this.st.listing.forget(id);
       void this.st.library.check();
     }
   }

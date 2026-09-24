@@ -65,11 +65,47 @@ export async function setMarked(items: MarkedItem[]): Promise<void> {
   await chrome.storage.local.set({ marked: items });
 }
 
+export type TagRule = {
+  /** lowercased civitai tag */
+  tag: string;
+  /** null: keep the last used root */
+  root: string | null;
+  sub: string;
+};
+
+export async function getTagRules(): Promise<TagRule[]> {
+  const got = await chrome.storage.local.get("tagRules");
+  return (got.tagRules as TagRule[] | undefined) ?? [];
+}
+
+export async function setTagRules(rules: TagRule[]): Promise<void> {
+  await chrome.storage.local.set({ tagRules: rules });
+}
+
+/** replaces the rule for that tag in place, or appends it (lowest priority) */
+export async function saveTagRule(rule: TagRule): Promise<void> {
+  const rules = await getTagRules();
+  const i = rules.findIndex((r) => r.tag === rule.tag);
+  await setTagRules(i >= 0 ? rules.map((r, j) => (j === i ? rule : r)) : [...rules, rule]);
+}
+
+export async function deleteTagRule(tag: string): Promise<void> {
+  await setTagRules((await getTagRules()).filter((r) => r.tag !== tag));
+}
+
 /** fires with the new list whenever any surface changes it */
 export function onMarkedChanged(cb: (items: MarkedItem[]) => void): () => void {
+  return onLocalChanged<MarkedItem[]>("marked", (v) => cb(v ?? []));
+}
+
+export function onTagRulesChanged(cb: (rules: TagRule[]) => void): () => void {
+  return onLocalChanged<TagRule[]>("tagRules", (v) => cb(v ?? []));
+}
+
+function onLocalChanged<T>(key: string, cb: (v: T | undefined) => void): () => void {
   const listener = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
-    if (area === "local" && changes.marked != null)
-      cb((changes.marked.newValue as MarkedItem[] | undefined) ?? []);
+    const c = changes[key];
+    if (area === "local" && c != null) cb(c.newValue as T | undefined);
   };
   chrome.storage.onChanged.addListener(listener);
   return () => chrome.storage.onChanged.removeListener(listener);

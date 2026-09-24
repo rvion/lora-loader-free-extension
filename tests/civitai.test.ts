@@ -54,6 +54,7 @@ test("model answer keeps id, name, type and versions", () => {
     id: 1,
     name: "x",
     type: "LORA",
+    tags: [],
     versions: [{ id: 2, name: "v1", files: [] }],
   });
   expect(() => parseCivitaiModel({ error: "nope" })).toThrow();
@@ -115,4 +116,14 @@ test("model answer carries version files with their metadata", () => {
     ],
   });
   expect(m.versions[0]?.files[0]).toMatchObject({ id: 9, primary: true, fp: "fp16", format: null });
+});
+
+test("model tags are lowercased, from strings or { name } objects", () => {
+  const m = parseCivitaiModel({
+    id: 1,
+    name: "x",
+    type: "LORA",
+    tags: ["Concept", { name: "Style" }, 3, ""],
+  });
+  expect(m.tags).toEqual(["concept", "style"]);
 });

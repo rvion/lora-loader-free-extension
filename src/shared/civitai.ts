@@ -23,6 +23,8 @@ export type CivitaiModel = {
   id: number;
   name: string;
   type: string;
+  /** lowercased */
+  tags: string[];
   versions: CivitaiVersion[];
 };
 
@@ -52,6 +54,25 @@ export function fileLabel(f: CivitaiFile): string {
 
 function formatSize(kb: number): string {
   return kb >= 1024 * 1024 ? `${(kb / 1024 / 1024).toFixed(1)} GB` : `${Math.round(kb / 1024)} MB`;
+}
+
+/** the tag a civitai listing is filtered by: `/models?tag=x` or `/tag/x` */
+export function parsePageTag(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  const fromPath = /^\/tag\/([^/?#]+)/.exec(url.pathname)?.[1];
+  const raw =
+    fromPath != null
+      ? decodeURIComponent(fromPath)
+      : url.pathname === "/models"
+        ? url.searchParams.get("tag")
+        : null;
+  const tag = raw?.trim().toLowerCase() ?? "";
+  return tag !== "" ? tag : null;
 }
 
 /** a model id from any link civitai renders: relative or absolute, with or without slug */
@@ -110,7 +131,16 @@ export function parseCivitaiModel(json: unknown): CivitaiModel {
         ]
       : [];
   });
-  return { id: o.id, name: o.name, type: o.type, versions };
+  const tags = (Array.isArray(o.tags) ? o.tags : []).flatMap((t: unknown) => {
+    const name =
+      typeof t === "string"
+        ? t
+        : typeof t === "object" && t != null
+          ? (t as { name?: unknown }).name
+          : null;
+    return typeof name === "string" && name !== "" ? [name.toLowerCase()] : [];
+  });
+  return { id: o.id, name: o.name, type: o.type, tags, versions };
 }
 
 function parseFiles(raw: unknown): CivitaiFile[] {

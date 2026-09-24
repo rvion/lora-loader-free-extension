@@ -2,8 +2,14 @@
 
 ## Unreleased (minor)
 
-- Green "✓ LM" badges on every Civitai model card whose model is in your
-  library, with a version count when you have several.
+- Every Civitai model card (home, search, tag pages, creators) shows
+  "✓ LM" when the model is in your library, or a one click "⬇ Install" that
+  downloads its latest version, with live progress on the card.
+- Tag rules: map a Civitai tag to a root and subfolder from the bar on any
+  tag page. Rules apply everywhere by the model's tags, first rule wins, and
+  can be reordered in the popup.
+- Much louder look: glowing gradients with a slow, GPU cheap pulse, green
+  for "have it", red and orange for "get it".
 - File picker on the card when a version has several weight files (fp16,
   pruned, …). Marked items keep the pick.
 

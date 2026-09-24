@@ -51,16 +51,29 @@ One root per surface, per build/app-state-tree: `CardSt` (content) and
 `PopupSt` (popup), services hang off it, components hold no business state.
 `Query<T>` in `src/shared/Query.ts` is the one async primitive.
 
-## Badges
+## Listing cards
 
-`BadgeSvc` (on `CardSt`, so it runs on every civitai page) owns one
+`ListingSvc` (on `CardSt`, so it runs on every civitai page) owns one
 MutationObserver, debounced 300 ms. Each pass: every `a[href*="/models/"]`
-holding an `img` or `video` → model id → cached status → badge present iff in
-library. Unknown ids go out in chunks of 100 (`libraryBatch`). The badge is a
-plain absolutely positioned span with inline styles (it lives in civitai's
-DOM, not the shadow root); civitai re-renders can drop it, and the next pass
-puts it back. `forget(modelId)` after a download, `forgetAll()` after a
-restart.
+holding an `img` or `video` → model id → cached presence + install job →
+one overlay element per card, re-rendered only when its text changes (so
+its own writes never loop the observer). Unknown ids go out in chunks of
+100 (`libraryBatch`). The overlay lives in civitai's DOM, styled by one
+`<style id="lmf-page-css">` in `<head>` (keyframes and `::after` need a
+stylesheet). Its click handler stops the event and prevents the anchor's
+navigation. Install = civitai model fetch → prefix, latest version, primary
+file → `suggestFolder` → `startDownload` → `watchDownload`.
+
+## Folder choice
+
+`resolveFolder` (pure, `src/shared/folderRules.ts`) implements the rule
+order in agent/spec.md. `suggestFolder` gathers its inputs (roots, rules,
+last folder) and is the one entry for the card and ⬇ Install.
+
+## Theme
+
+`src/shared/theme.ts` holds the gradients and the halo css, used by the
+shadow root (card, tag bar) and the page stylesheet (listing overlays).
 
 ## Storage
 
@@ -69,4 +82,5 @@ restart.
 | `settings` | sync | `{ lmUrl }` |
 | `lastFolder:<prefix>` | local | `{ root, sub }` |
 | `marked` | local | `MarkedItem[]` |
+| `tagRules` | local | `TagRule[]` (order = priority) |
 | `active` | session | `Record<versionId, downloadId>` |
