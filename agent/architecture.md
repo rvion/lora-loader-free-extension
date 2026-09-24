@@ -85,6 +85,11 @@ any run of our hosts right after the anchor as "in place", so two docked
 hosts could never swap forever. The right rail is not a dock: civitai hides
 it below its desktop breakpoint, and the card vanished with it.
 
+Keyboard: each host stops keydown, keypress and keyup whose real target
+(`composedPath()[0]`) is one of our inputs, selects or textareas. Civitai's
+hotkeys ("/" focuses its search) listen on the document and see the shadow
+host as the target, so without this they fire while typing in our fields.
+
 Host modes (`data-mode`, styled with `:host([data-mode=…])`): `docked`,
 `floating` (default corner), `custom` (at `pos`). Drags listen on window:
 undocking re-parents the host, which would release pointer capture.

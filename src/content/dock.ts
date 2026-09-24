@@ -28,7 +28,22 @@ export function createHost(id: string): { host: HTMLElement; mountPoint: HTMLEle
   style.textContent = CARD_CSS;
   const mountPoint = document.createElement("div");
   shadow.append(style, mountPoint);
+  // civitai's page hotkeys ("/" jumps to its search) see our shadow host, not our input, as the
+  // target, so they fire while typing here. keys from our fields stop at the host; react already
+  // handled them inside the shadow root
+  for (const type of ["keydown", "keypress", "keyup"] as const)
+    host.addEventListener(type, (e) => {
+      if (isTypingTarget(e.composedPath()[0])) e.stopPropagation();
+    });
   return { host, mountPoint };
+}
+
+function isTypingTarget(t: EventTarget | undefined): boolean {
+  return (
+    t instanceof HTMLInputElement ||
+    t instanceof HTMLTextAreaElement ||
+    t instanceof HTMLSelectElement
+  );
 }
 
 export type Placement = {
