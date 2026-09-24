@@ -64,6 +64,17 @@ stylesheet). Its click handler stops the event and prevents the anchor's
 navigation. Install = civitai model fetch → prefix, latest version, primary
 file → `suggestFolder` → `startDownload` → `watchDownload`.
 
+## Tag bar placement
+
+The tag bar has its own shadow host (`#lmf-tagbar-host`, own React root,
+same CARD_CSS), because it moves between civitai's ad slot and
+`documentElement`. `placeTagBar` (`src/content/tagDock.ts`) runs on the
+500 ms url tick: detach off tag pages, dock into `[data-adhesive-ad]` when
+it exists, else float. The ad is hidden by one page css rule,
+`[data-adhesive-ad]:has(> #lmf-tagbar-host) > :not(#lmf-tagbar-host)`, so
+civitai re-rendering the ad cannot bring it back while docked, and it
+returns by itself when the host leaves.
+
 ## Folder choice
 
 `resolveFolder` (pure, `src/shared/folderRules.ts`) implements the rule

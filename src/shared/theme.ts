@@ -33,4 +33,7 @@ ${GLOW_CSS}
 .lmf-chip.lmf-hot, .lmf-chip.lmf-danger { cursor: pointer; }
 .lmf-chip.lmf-hot:hover { transform: scale(1.08); }
 .lmf-chip.lmf-busy { cursor: progress; }
+/* the tag bar docked in civitai's bottom ad slot replaces the ad, only while it is there */
+[data-adhesive-ad]:has(> #lmf-tagbar-host) > :not(#lmf-tagbar-host) { display: none !important; }
+#lmf-tagbar-host { align-self: center; }
 `;

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { Card, TagBar } from "src/content/Card.tsx";
 import { CARD_CSS } from "src/content/cardCss.ts";
 import { CardSt } from "src/content/CardSt.ts";
+import { createTagHost, placeTagBar } from "src/content/tagDock.ts";
 
 configure({ enforceActions: "always" });
 
@@ -23,15 +24,18 @@ function mount(): void {
 
   const st = new CardSt();
   Object.assign(window, { lmFree: st });
-  st.onUrl(location.href);
-  setInterval(() => st.onUrl(location.href), URL_POLL_MS);
+  const tag = createTagHost();
+  const tick = () => {
+    st.onUrl(location.href);
+    placeTagBar(tag.host, st.tag.pageTag != null);
+  };
+  tick();
+  setInterval(tick, URL_POLL_MS);
+  createRoot(tag.mountPoint).render(<TagBar st={st} />);
   createRoot(root).render(
-    <>
-      <TagBar st={st} />
-      <div className="wrap">
-        <Card st={st} />
-      </div>
-    </>,
+    <div className="wrap">
+      <Card st={st} />
+    </div>,
   );
 }
 

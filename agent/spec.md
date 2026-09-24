@@ -85,10 +85,15 @@ A rule is `tag → root + subfolder`. Tags are Civitai's, lowercased.
   otherwise the last folder used for that model type. A rule's root only
   applies when it is a root of the model's type (a LoRA root never applies
   to a checkpoint); the subfolder always does.
-- **Tag bar**: on a tag page, a glowing bar fixed at the top center reads
+- **Tag bar**: on a tag page, a glowing bar reads
   `Tag concept → [root] / [subfolder] [Save rule]`, or shows the saved rule
   with Delete. Roots offered are the LoRA roots, plus "(last used root)". It
-  folds to a pill.
+  folds to a pill. It never covers civitai's own UI:
+  - **docked** (default): it takes the place of civitai's bottom ad bar
+    (`[data-adhesive-ad]`), whose content is hidden while the bar is docked
+    there. Off tag pages the ad bar is left alone;
+  - **floating** (no ad bar on the page, e.g. after "Close Ad"): fixed at the
+    bottom left, clear of the card at the bottom right.
 - The card shows `Folder from rule: concept` under the folder picker when a
   rule chose it. Editing the folder there changes this download only (and
   the last used folder), never the rule.

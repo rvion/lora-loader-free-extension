@@ -58,12 +58,16 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .progress .bar { position: absolute; inset: 0 auto 0 0; background: ${HOT}; transition: width .3s; }
 .progress span { position: relative; font-size: 12px; font-weight: 800; padding-left: 8px; line-height: 22px;
   text-shadow: 0 1px 2px rgba(0,0,0,.6); }
-.tagbar { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 2147483000;
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px; max-width: calc(100vw - 32px); flex-wrap: wrap; }
+.tagbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex-wrap: wrap;
+  max-width: calc(100vw - 32px); }
 .tagbar select { width: 200px; } .tagbar input { width: 160px; }
 .tagname { font-size: 14px; white-space: nowrap; }
 .tagname b { font-weight: 800; color: #ffa94d; }
 .saved { padding: 5px 10px; border-radius: 999px; font-weight: 800; font-size: 12px; }
-.tagpill { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); z-index: 2147483000;
-  border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 800; }
+.tagpill { border-radius: 999px; padding: 7px 16px; font-size: 14px; font-weight: 800; }
+/* docked: inside civitai's bottom ad slot, in its flow */
+:host([data-mode="docked"]) .dock { display: flex; justify-content: center; padding: 8px 16px; }
+/* floating: no ad slot, bottom left, clear of the card at the bottom right */
+:host([data-mode="floating"]) .dock { position: fixed; left: 18px; bottom: 18px; z-index: 2147483000;
+  max-width: calc(100vw - 380px); }
 `;

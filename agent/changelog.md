@@ -5,6 +5,10 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Tag bar moved off the top (it covered civitai's filters) into civitai's
+  bottom ad slot, own shadow host placed by tagDock.ts, ad hidden by a
+  `:has` css rule only while docked. Floating bottom left as fallback.
+
 - ⬇ Install on every listing card (ListingSvc, renamed from BadgeSvc),
   tag → folder rules (folderRules.ts, TagSvc, tag bar, popup list) and the
   loud theme (theme.ts). The owner could not spot the old pills on
