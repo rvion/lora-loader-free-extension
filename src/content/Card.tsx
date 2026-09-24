@@ -16,7 +16,8 @@ export const CardShell = obs(function CardShell(p: { st: CardSt }) {
       <Movable place={p.st.placement} className="wrap">
         <Card st={p.st} />
       </Movable>
-      <TargetEditor st={p.st.edit} lmDown={p.st.listing.isLmDown} />
+      {/* only in the attached host: a copy in a detached root sees every click as outside and closes */}
+      {p.st.page.isModelPage && <TargetEditor st={p.st.edit} lmDown={p.st.listing.isLmDown} />}
     </>
   );
 });

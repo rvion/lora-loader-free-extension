@@ -59,8 +59,10 @@ data. It watches the model page's own model (`watch`) even though it is
 not a tile, bumps an observable `rev` after each pass so the react row
 re-renders, and switches that row to mark chips while LoRA Manager is down.
 `EditSvc` holds manual targets and file picks per version for the tab; the
-`TargetEditor` popover edits them and renders in whichever shadow root is
-attached (card host on model pages, strip host elsewhere). The old card
+`TargetEditor` popover edits them and renders **only** in the shadow root
+that is attached (card host on model pages, strip host elsewhere): a copy
+mounted in a detached root registers the outside click listener too, never
+finds its anchor in the event path, and closes the editor on every click. The old card
 services (library, folder, file, download, mark) are gone.
 
 ## Listing cards

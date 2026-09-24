@@ -8,7 +8,8 @@ ${GLOW_CSS}
 ${CHIP_CSS}
 .row-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .row-chips .lmf-chip { font-size: 12px; }
-.target-pop { position: fixed; width: 380px; z-index: 50; }
+/* fixed at the chip's viewport rect: must beat .popover's absolute, anchor relative placement */
+.popover.target-pop { position: fixed; right: auto; width: 380px; z-index: 50; }
 .target-pop .target-row select { width: 130px; } .target-pop .target-row .combo { width: 170px; }
 .file-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .file-row select { flex: 1; }
@@ -64,6 +65,8 @@ button.icon { padding: 0 6px; background: none; border: none; font-size: 15px; c
 button.icon.on { color: #ffa94d; }
 button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px; }
 .tools { position: relative; }
+/* popovers can sit outside a frame (the target editor): they carry their own text colors */
+.popover { color: #f1f3f5; font-size: 13px; line-height: 1.25; }
 .popover { position: absolute; z-index: 20; top: calc(100% + 8px); right: -4px; width: 320px; padding: 8px 10px;
   text-align: left; cursor: default; background: #1f2023; border: 1px solid #5c5f66; border-radius: 8px;
   box-shadow: 0 10px 30px rgba(0,0,0,.65); }
