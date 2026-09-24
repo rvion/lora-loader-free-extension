@@ -53,17 +53,19 @@ One root per surface, per build/app-state-tree: `CardSt` (content) and
 
 ## One chip engine
 
-`ListingSvc` builds every chip, on tiles (plain dom, `chipEl`) and on the
-model page row (react, `ChipView` in Card.tsx), from the same `chipsFor`
-data. It watches the model page's own model (`watch`) even though it is
-not a tile, bumps an observable `rev` after each pass so the react row
-re-renders, and switches that row to mark chips while LoRA Manager is down.
-`EditSvc` holds manual targets and file picks per version for the tab; the
-`TargetEditor` popover edits them and renders **only** in the shadow root
-that is attached (card host on model pages, strip host elsewhere): a copy
-mounted in a detached root registers the outside click listener too, never
-finds its anchor in the event path, and closes the editor on every click. The old card
-services (library, folder, file, download, mark) are gone.
+`ListingSvc` builds every chip from the same `chipsFor` data and renders it
+as plain dom (`chipEl`): on tiles, and on a model page over its first
+showcase image (`showcaseHost`, `renderHero`), for the model it `watch`es
+even though that model is not a tile. It bumps an observable `rev` after
+each pass (the bar reads `isLmDown` through it) and switches the model
+page's chips to mark chips while LoRA Manager is down. `EditSvc` holds
+manual targets and file picks per version for the tab; the `TargetEditor`
+popover edits them.
+
+There is **one** shadow host, the bar (`#lmf-tagbar-host`): Rules, Focus,
+the "here" line, tools and the ⚙ server popover, identical on every page;
+the target editor renders in it too. The model page card (its own host,
+placement and row) is gone.
 
 ## Listing cards
 

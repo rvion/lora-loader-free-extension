@@ -3,8 +3,10 @@ import { obs } from "rvlib-mobx";
 
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
 import { usePopoverDismiss } from "src/content/popover.ts";
+import type { CardSt } from "src/content/CardSt.ts";
 import type { FocusSvc } from "src/content/FocusSvc.ts";
 import type { RulesSvc } from "src/content/RulesSvc.ts";
+import { ServerPopover } from "src/content/ServerPopover.tsx";
 import { SubfolderBox } from "src/content/SubfolderBox.tsx";
 import type { LmPrefix } from "src/shared/civitai.ts";
 import { rootLabels } from "src/shared/paths.ts";
@@ -12,20 +14,17 @@ import { summarizeCond, typeName, type CondField, type Rule } from "src/shared/r
 
 export type Picks = { tags: string[]; bases: string[] };
 
-/** the strip on listing pages: only the Rules button and what applies here (agent/spec.md "rules strip") */
-export const RulesStrip = obs(function RulesStrip(p: { st: RulesSvc; focus: FocusSvc }) {
-  const st = p.st;
-  if (!st.stripVisible) return null;
-  const here = st.pageRule;
-  const picks: Picks = {
-    tags: st.stats.tags.map((t) => t[0]),
-    bases: st.stats.bases.map((b) => b[0]),
-  };
+/** the bar, identical on every page (agent/spec.md "rules"): LM, Rules, Focus, what applies here, tools */
+export const RulesStrip = obs(function RulesStrip(p: { root: CardSt }) {
+  const root = p.root;
+  const st = root.rules;
+  const here = root.hereRule;
+  const picks = root.picks;
   if (st.minimized)
     return (
       <Movable place={st.placement} className="tagwrap">
         <button className="tagpill lmf-hot" onClick={() => st.toggleMinimized()} title="Rules">
-          Rules ({st.rules.length})
+          LM · Rules ({st.rules.length})
         </button>
       </Movable>
     );
@@ -42,27 +41,33 @@ export const RulesStrip = obs(function RulesStrip(p: { st: RulesSvc; focus: Focu
         <span className="brand" title="LoRA Manager">
           LM
         </span>
-        <RulesButton
-          st={st}
-          picks={picks}
-          onOpen={() => void st.open({ cond: st.pageCond, existing: here })}
-        />
-        <FocusButton st={p.focus} picks={picks} />
+        <RulesButton st={st} picks={picks} onOpen={() => void root.openRulesHere()} />
+        <FocusButton st={root.focus} picks={picks} />
         <span className="here">
           {here != null ? (
             <>
               here: <b>{summarizeCond(here.cond)}</b> → {targetText(here)}
             </>
-          ) : st.pageCond != null ? (
+          ) : root.hasContext ? (
             <span className="muted">no rule for this page yet</span>
           ) : null}
         </span>
-        <DockButton place={st.placement} />
-        {!st.placement.isDocked && (
-          <button className="icon" onClick={() => st.toggleMinimized()} title="Fold">
-            –
+        <span className="tools">
+          <DockButton place={st.placement} />
+          <button
+            className={root.server.isOpen ? "icon on" : "icon"}
+            onClick={() => root.server.toggleEditing()}
+            title="LoRA Manager address, restart ComfyUI"
+          >
+            ⚙
           </button>
-        )}
+          {root.server.isOpen && <ServerPopover st={root} />}
+          {!st.placement.isDocked && (
+            <button className="icon" onClick={() => st.toggleMinimized()} title="Fold">
+              –
+            </button>
+          )}
+        </span>
         <DockMiss place={st.placement} />
       </div>
     </Movable>

@@ -4,7 +4,6 @@ import { AdSvc } from "src/content/AdSvc.ts";
 import { EditSvc } from "src/content/EditSvc.ts";
 import { FocusSvc } from "src/content/FocusSvc.ts";
 import { factsOf, ListingSvc } from "src/content/ListingSvc.ts";
-import { PlacementSvc } from "src/content/PlacementSvc.ts";
 import { RulesSvc } from "src/content/RulesSvc.ts";
 import {
   fetchCivitaiModel,
@@ -18,7 +17,7 @@ import {
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
-import { matchRule } from "src/shared/rules.ts";
+import { matchRule, type Rule } from "src/shared/rules.ts";
 import { getSettings, onSettingsChanged, saveLmUrl } from "src/shared/storage.ts";
 import { errorMessage } from "src/shared/watchDownload.ts";
 
@@ -30,15 +29,13 @@ export class CardSt {
   edit: EditSvc;
   listing: ListingSvc;
   ads: AdSvc;
-  placement: PlacementSvc;
   rules: RulesSvc;
   focus: FocusSvc;
-  collapsed = false;
 
   constructor() {
     this.page = new PageSvc();
     this.focus = new FocusSvc();
-    this.rules = new RulesSvc(() => this.page.isModelPage);
+    this.rules = new RulesSvc();
     this.edit = new EditSvc();
     this.listing = new ListingSvc({
       draft: () => this.rules.draftRule,
@@ -51,7 +48,6 @@ export class CardSt {
     this.edit.link(this.listing);
     this.server = new ServerSvc(this);
     this.ads = new AdSvc();
-    this.placement = new PlacementSvc("card");
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
       ping: () => send({ kind: "ping" }),
@@ -64,7 +60,6 @@ export class CardSt {
       edit: false,
       listing: false,
       ads: false,
-      placement: false,
       rules: false,
       focus: false,
     });
@@ -75,10 +70,6 @@ export class CardSt {
     );
   }
 
-  toggleCollapsed(): void {
-    this.collapsed = !this.collapsed;
-  }
-
   /** called on every url change the page makes */
   onUrl(href: string): void {
     this.rules.onUrl(href);
@@ -86,6 +77,37 @@ export class CardSt {
     if (!this.page.setRef(ref)) return;
     this.listing.watch(ref?.modelId ?? null);
     if (ref != null) void this.page.load();
+  }
+
+  /** what the bar's "here" line shows: on a model page the first rule it matches, else the page's rule */
+  get hereRule(): Rule | null {
+    const m = this.page.model.result;
+    if (!this.page.isModelPage) return this.rules.pageRule;
+    if (m == null) return null;
+    return (
+      this.rules.rules.find((r) =>
+        m.versions.some((x) => matchRule(r.cond, factsOf(m), x.baseModel)),
+      ) ?? null
+    );
+  }
+
+  get hasContext(): boolean {
+    return this.page.isModelPage || this.rules.pageCond != null;
+  }
+
+  /** quick picks for rules and focus: this model's tags and bases, else what the page's tiles show */
+  get picks(): { tags: string[]; bases: string[] } {
+    if (this.page.isModelPage) return this.page.picks;
+    return {
+      tags: this.rules.stats.tags.map((t) => t[0]),
+      bases: this.rules.stats.bases.map((b) => b[0]),
+    };
+  }
+
+  openRulesHere(): Promise<void> {
+    return this.page.isModelPage
+      ? this.openRules()
+      : this.rules.open({ cond: this.rules.pageCond, existing: this.rules.pageRule });
   }
 
   /** the rules popover on a model page: the first rule this model matches, else its version's base model */

@@ -135,12 +135,6 @@ export class ListingSvc {
     this.schedule();
   }
 
-  /** the model page row: every base, unfiltered by focus; mark chips while LM is down */
-  chipsForModel(modelId: number): Chip[] {
-    void this.rev;
-    return this.chipsOf(modelId, true);
-  }
-
   modelOf(modelId: number): CivitaiModel | null {
     void this.rev;
     return this.remote.get(modelId) ?? null;
@@ -273,13 +267,35 @@ export class ListingSvc {
       box.dataset.sig = sig;
       box.replaceChildren(...chips.map(chipEl));
     }
+    this.renderHero();
   }
 
-  private makeBox(card: HTMLAnchorElement, modelId: number): HTMLElement {
+  /** the model page's chips, on its first showcase image (agent/spec.md "the model page") */
+  private renderHero(): void {
+    const id = this.watched;
+    const host = id == null ? null : showcaseHost();
+    for (const b of document.querySelectorAll<HTMLElement>("[data-lmf-hero]"))
+      if (b.parentElement !== host) b.remove();
+    if (id == null || host == null) return;
+    const chips = this.chipsOf(id, true);
+    const existing = host.querySelector<HTMLElement>(":scope > [data-lmf-hero]");
+    if (chips.length === 0) {
+      existing?.remove();
+      return;
+    }
+    const box = existing ?? this.makeBox(host, id, true);
+    const sig = JSON.stringify(chips);
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    box.replaceChildren(...chips.map(chipEl));
+  }
+
+  private makeBox(card: HTMLElement, modelId: number, hero = false): HTMLElement {
     if (getComputedStyle(card).position === "static") card.style.position = "relative";
     const box = document.createElement("span");
-    box.className = "lmf-chips";
+    box.className = hero ? "lmf-chips lmf-hero" : "lmf-chips";
     box.setAttribute(CHIPS_ATTR, String(modelId));
+    if (hero) box.setAttribute("data-lmf-hero", "");
     // the chips sit inside civitai's <a>: swallow the whole gesture so the card never navigates
     const swallow = (e: Event) => {
       e.preventDefault();
@@ -807,6 +823,20 @@ export function pageStats(models: (CivitaiModel | null)[], draft: Rule | null): 
   const top = (xs: Map<string, number>, n: number) =>
     [...xs].sort((a, b) => b[1] - a[1]).slice(0, n);
   return { total: models.length, matched, tags: top(tags, 12), bases: top(bases, 8) };
+}
+
+/** the parent of the first showcase image or video of a model page: large, from civitai's image cdn,
+ *  not a suggestion tile (a link to a model) and not in the header */
+function showcaseHost(): HTMLElement | null {
+  for (const media of document.querySelectorAll<HTMLElement>(
+    'img[src*="image.civitai.com"], video',
+  )) {
+    if (media.closest('header, a[href*="/models/"], [data-lmf-chips]') != null) continue;
+    const r = media.getBoundingClientRect();
+    if (r.width < 200 || r.height < 150) continue;
+    return media.parentElement;
+  }
+  return null;
 }
 
 type ModelCard = { el: HTMLAnchorElement; modelId: number };

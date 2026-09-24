@@ -52,13 +52,9 @@ export class RulesSvc {
   roots: Query<AllRoots>;
   placement = new PlacementSvc("tag");
 
-  constructor(private isModelPage: () => boolean) {
+  constructor() {
     this.roots = new Query(loadAllRoots);
-    makeAutoObservable<RulesSvc, "isModelPage">(this, {
-      roots: false,
-      placement: false,
-      isModelPage: false,
-    });
+    makeAutoObservable(this, { roots: false, placement: false });
     void seedCategoryRulesOnce().then(() => getRules().then((r) => this.setRules(r)));
     onRulesChanged((r) => this.setRules(r));
   }
@@ -85,11 +81,6 @@ export class RulesSvc {
   get pageRule(): Rule | null {
     const c = this.pageCond;
     return c == null ? null : (this.rules.find((r) => sameCond(r.cond, c)) ?? null);
-  }
-
-  /** the bar is on every page; on a model page the card's row is the bar */
-  get stripVisible(): boolean {
-    return !this.isModelPage();
   }
 
   /** the rule being edited, saved or not: tried first everywhere while the popover is open */

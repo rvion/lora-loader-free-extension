@@ -1,17 +1,10 @@
 import { configure, reaction } from "mobx";
 import { createRoot } from "react-dom/client";
 
-import { CardShell } from "src/content/Card.tsx";
 import { RulesStrip } from "src/content/RulesUi.tsx";
 import { TargetEditorHost } from "src/content/TargetEditor.tsx";
 import { CardSt } from "src/content/CardSt.ts";
-import {
-  CARD_HOST_ID,
-  createHost,
-  placeHost,
-  TAG_HOST_ID,
-  UNDER_HEADER_DOCK,
-} from "src/content/dock.ts";
+import { createHost, placeHost, TAG_HOST_ID, UNDER_HEADER_DOCK } from "src/content/dock.ts";
 
 configure({ enforceActions: "always" });
 
@@ -23,22 +16,12 @@ function mount(): void {
   const st = new CardSt();
   Object.assign(window, { lmFree: st });
 
-  const card = createHost(CARD_HOST_ID);
-  const tag = createHost(TAG_HOST_ID);
-  const placeCard = () =>
-    st.placement.setActual(
-      placeHost(card.host, {
-        visible: st.page.isModelPage,
-        dock: UNDER_HEADER_DOCK,
-        free: st.placement.mode === "free",
-        hasPos: st.placement.pos != null,
-      }),
-    );
+  const bar = createHost(TAG_HOST_ID);
   const tp = st.rules.placement;
-  const placeTag = () =>
+  const placeBar = () =>
     tp.setActual(
-      placeHost(tag.host, {
-        visible: st.rules.stripVisible,
+      placeHost(bar.host, {
+        visible: true,
         dock: UNDER_HEADER_DOCK,
         free: tp.mode === "free",
         hasPos: tp.pos != null,
@@ -46,19 +29,16 @@ function mount(): void {
     );
   const tick = () => {
     st.onUrl(location.href);
-    placeCard();
-    placeTag();
+    placeBar();
   };
   tick();
   setInterval(tick, URL_POLL_MS);
   // a mode change or the first drag move must re-place at once, not on the next tick
-  reaction(() => `${st.placement.mode}|${st.placement.pos == null}`, placeCard);
-  reaction(() => `${tp.mode}|${tp.pos == null}`, placeTag);
+  reaction(() => `${tp.mode}|${tp.pos == null}`, placeBar);
 
-  createRoot(card.mountPoint).render(<CardShell st={st} />);
-  createRoot(tag.mountPoint).render(
+  createRoot(bar.mountPoint).render(
     <>
-      <RulesStrip st={st.rules} focus={st.focus} />
+      <RulesStrip root={st} />
       <TargetEditorHost st={st} />
     </>,
   );

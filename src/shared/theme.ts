@@ -30,6 +30,8 @@ export const CHIP_CSS = `
 .lmf-chips { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: flex; flex-direction: column;
   align-items: flex-start; gap: 4px; max-width: calc(100% - 16px); }
 /* glass chips: the illustration shows through; one real button acts (agent/spec.md "listing cards") */
+/* the model page's chips sit on its showcase image, which has no badge row to clear */
+.lmf-chips.lmf-hero { top: 12px; left: 12px; }
 .lmf-chip { position: relative; display: inline-flex; align-items: center; gap: 6px; max-width: 100%;
   height: 26px; box-sizing: border-box; padding: 0 9px 0 3px; border-radius: 999px;
   font: 700 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .02em;

@@ -111,8 +111,7 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
   );
 });
 
-/** the strip's copy: off model pages the card host is detached, so the editor renders here */
+/** the editor lives in the bar's shadow root, the one host on every page */
 export const TargetEditorHost = obs(function TargetEditorHost(p: { st: CardSt }) {
-  if (p.st.page.isModelPage) return null;
   return <TargetEditor st={p.st.edit} lmDown={p.st.listing.isLmDown} />;
 });

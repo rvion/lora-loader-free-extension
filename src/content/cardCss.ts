@@ -6,40 +6,23 @@ export const CARD_CSS = `
 * { box-sizing: border-box; font-family: system-ui, -apple-system, sans-serif; }
 ${GLOW_CSS}
 ${CHIP_CSS}
-.row-chips { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
-.row-chips .lmf-chip { font-size: 12px; }
 /* fixed at the chip's viewport rect: must beat .popover's absolute, anchor relative placement */
 .popover.target-pop { position: fixed; right: auto; width: 380px; z-index: 50; }
 .target-pop .target-row select { width: 130px; } .target-pop .target-row .combo { width: 170px; }
 .file-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .file-row select { flex: 1; }
-.wrap { z-index: 2147483000; }
-:host([data-mode="floating"]) .wrap { position: fixed; right: 18px; bottom: 18px; }
-:host([data-mode="custom"]) .wrap { position: fixed; }
 /* docked: a full width strip under civitai's header, one wrapping row */
-:host([data-mode="docked"]) .wrap { position: relative; display: flex; justify-content: flex-start;
-  padding: 4px 12px; background: #141517; border-bottom: 1px solid #373a40; }
-:host([data-mode="docked"]) .card { width: auto; max-width: 100%; display: flex; flex-wrap: wrap;
-  align-items: center; gap: 4px 10px; padding: 4px 10px; }
-:host([data-mode="docked"]) .card > header { margin: 0; gap: 6px; }
-:host([data-mode="docked"]) .card > .tools { order: 99; }
-:host([data-mode="docked"]) .card > p { margin: 0; }
-:host([data-mode="docked"]) .card > .docknote { flex-basis: 100%; }
-header { cursor: grab; touch-action: none; user-select: none; }
-header:active { cursor: grabbing; }
-.card, .tagbar {
+.tagbar {
   position: relative; isolation: isolate; color: #f1f3f5; font-size: 13px; line-height: 1.25;
   background: linear-gradient(#141517, #141517) padding-box, ${HOT} border-box;
   border: 2px solid transparent; border-radius: 10px;
 }
-.card::after, .tagbar::after {
+.tagbar::after {
   content: ""; position: absolute; inset: -2px; border-radius: inherit; pointer-events: none; z-index: -1;
   box-shadow: 0 0 8px 2px rgba(255, 23, 68, .7), 0 0 16px 4px rgba(255, 145, 0, .3);
   opacity: .3; animation: lmf-pulse 1.8s ease-in-out infinite; will-change: opacity;
 }
-@media (prefers-reduced-motion: reduce) { .card::after, .tagbar::after { animation: none; opacity: .5; } }
-.card { width: 320px; padding: 8px 10px; }
-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+@media (prefers-reduced-motion: reduce) { .tagbar::after { animation: none; opacity: .5; } }
 .brand { font-size: 10px; font-weight: 900; letter-spacing: .04em; padding: 1px 5px; border-radius: 4px;
   background: ${HOT}; color: #fff; }
 .title { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -75,8 +58,6 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .row { display: flex; gap: 6px; }
 .row input { flex: 1; min-width: 0; }
 .restart { margin-top: 8px; }
-.pill { display: flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 12px;
-  font-size: 13px; font-weight: 800; }
 .tagbar { display: flex; align-items: center; gap: 6px; padding: 4px 10px; flex-wrap: wrap;
   max-width: calc(100vw - 32px); }
 .tagbar select { width: 200px; } .tagbar .combo { width: 200px; }
@@ -97,22 +78,19 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .sep { display: none; color: #adb5bd; }
 :host([data-mode="docked"]) .sep { display: inline; }
 /* inside a glowing frame the frame is enough: buttons keep the gradient, lose the halo */
-.card .lmf-hot::after, .card .lmf-cool::after, .tagbar .lmf-hot::after, .tagbar .lmf-cool::after { display: none; }
+.tagbar .lmf-hot::after, .tagbar .lmf-cool::after { display: none; }
 /* tools: top right on the floating card, last item on the docked row */
-.card { position: relative; }
 .tools { display: inline-flex; align-items: center; gap: 2px; }
-:host(:not([data-mode="docked"])) .card > .tools { position: absolute; top: 6px; right: 6px; }
 /* version chip */
 .vchip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px;
   font-size: 12px; font-weight: 700; background: #25262b; border: 1px solid #5c5f66; }
 .vchip:hover { border-color: #ffa94d; }
 .vchip-base { font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; background: #373a40; color: #ffd8a8; }
 /* one row height for both docked strips: a 40px frame, 26px controls */
-:host([data-mode="docked"]) .card, :host([data-mode="docked"]) .tagbar { min-height: 40px; padding: 4px 10px; gap: 4px 10px; }
 :host([data-mode="docked"]) :is(select, input, button:not(.icon):not(.link)),
 :host([data-mode="docked"]) :is(.status, .saved, .vchip) { height: 26px; box-sizing: border-box; }
 :host([data-mode="docked"]) :is(.status, .saved, .vchip) { display: inline-flex; align-items: center; }
-:host([data-mode="docked"]) .tagwrap, :host([data-mode="docked"]) .wrap { padding: 4px 12px; }
+:host([data-mode="docked"]) .tagwrap { padding: 4px 12px; }
 :host([data-mode="docked"]) :is(.grip, .brand, button.icon) { line-height: 1; }
 button.basebtn { font-size: 11px; font-weight: 800; color: #ffa94d; border: 1px dashed #ffa94d; border-radius: 5px;
   padding: 0 6px; height: 22px; }

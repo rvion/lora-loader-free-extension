@@ -1,30 +1,21 @@
 # Spec: what the user sees
 
-## The model page row
+## The model page
 
-On a model page the bar's row reads, left aligned:
+The bar is the same as on every other page (see "rules strip"). The model's
+chips sit **on its first showcase image**, top left, exactly like a tile's
+chips: one per base model, every base (not filtered by focus: you opened
+this model on purpose), same buttons, same path, same editor, same tooltip.
+The showcase image is the first `image.civitai.com` image or video in the
+page that is at least 200×150 on screen and is neither inside a link to a
+model (those are suggestion tiles, which get their own chips) nor inside
+the header. Civitai re-rendering its gallery moves the chips to the new
+first image.
 
-```
-[LM] [Rules ▾] [Focus ▾]  ✓ Krea 2   ⬇ Anima [LORAS] (anima/styles)   ⇱ ⚙
-```
-
-After Rules and Focus it shows **the same chips as a listing tile** for this
-model (one per base model, see "listing cards"), built by the same code, not
-filtered by focus (you opened this model on purpose). Hover gives the same
-tooltip (where your files are, what is newer). Clicking a chip's body runs
-it; clicking its `[root] (subfolder)` part opens the target editor (below).
-
-When LoRA Manager does not answer, the chips of this model still show, as
-`☆ Mark Anima [LORAS] (anima/styles)`: a click marks that version with its
-target for the popup's Download all (`★ Marked`, click again to unmark).
-
-The ⚙ tool opens a **popover** anchored under it (never inline) with the
-server URL field (ComfyUI host, IP or full URL, e.g. `192.168.1.20:8188`)
-and Restart ComfyUI. It closes on ⚙, ✕, Esc or a click outside, opens by
-itself when LoRA Manager is unreachable, and once closed stays closed until
-the address is saved again. Saving it re-checks at once.
-
-Floating (free mode), the same row wraps into a small box.
+When LoRA Manager does not answer, those chips turn into
+`[Mark Anima] loras / anima/styles`: a click marks that version with its
+target for the popup's Download all (`★ marked`, the button then says
+Unmark).
 
 ## Target editor (tiles and model page)
 
@@ -229,18 +220,19 @@ On a model page the editor starts from that model (its version's base
 model; a saved rule the model already matches opens instead), and while it
 is open the card's folder fields preview the draft live.
 
-**The bar** is on **every civitai page**, docked as its own strip under
-civitai's header (see "dock and free mode"). It always starts with
-**[Rules ▾] [Focus ▾]**. On a model page the card's row is the bar (it starts
-with the same two buttons, then the card's own content); everywhere else
-the bar holds:
+**The bar** is on **every civitai page**, identical everywhere, docked as
+its own strip under civitai's header (see "dock and free mode"):
 
 ```
-[LM] [Rules (5) ▾] [Focus: Illustrious, Krea 2 ▾]  here: tag style → loras / {base}/styles   ⇱
+[LM] [Rules (5) ▾] [Focus: Illustrious, Krea 2 ▾]  here: tag style → loras / {base}/styles   ⇱ ⚙
 ```
 
-The "here" line is the saved rule this page's context matches, else "no
-rule for this page yet".
+The "here" line is the saved rule this page's context matches (on a model
+page: the first rule this model matches), else "no rule for this page yet".
+⚙ opens the server popover: the LoRA Manager address and Restart ComfyUI;
+it closes on ⚙, ✕, Esc or a click outside, opens by itself when LoRA
+Manager is unreachable, and once closed stays closed until the address is
+saved again.
 
 **Rules popover** (opened by the button, closed by it, ✕, Esc or a click
 outside; the strip's layout never changes):

@@ -19,6 +19,8 @@
   for "have it", red and orange for "get it".
 - Subfolder picker that works like a select: it lists every folder LoRA
   Manager knows, filters as you type, and still takes any new path.
+- On a model page the chips sit on its first image, like on a tile, and
+  the bar is the same on every page.
 - The model page shows the same chips as the tiles; click a chip's folder
   part to change where that one goes (and which file), on tiles too. When
   LoRA Manager is down, the chips mark versions for Download all instead.

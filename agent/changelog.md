@@ -5,6 +5,13 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Model page chips moved onto the first showcase image (renderHero), like a
+  tile; the model page card and its host are deleted, the bar is the one
+  host and is identical everywhere (⚙ moved into it). Gate note: shipkit ci
+  is blocked by an uncommitted shipkit check (SK023, see
+  .shipkit/reflections/20260924-sk023-blocks-every-gate.md); typecheck,
+  lint and tests ran through the repo scripts instead.
+
 - Chip layout: the button first and named after the base model (Get Anima,
   Update Krea 2, Retry, Mark / Unmark), then the target as one path
   `loras / anima/styles` (same size, root orange, subfolder blue), each half

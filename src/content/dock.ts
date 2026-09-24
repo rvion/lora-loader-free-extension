@@ -1,6 +1,5 @@
 import { CARD_CSS } from "src/content/cardCss.ts";
 
-export const CARD_HOST_ID = "lora-manager-free-card";
 export const TAG_HOST_ID = "lmf-tagbar-host";
 
 export type DockTarget = {
@@ -78,7 +77,7 @@ export function placeHost(host: HTMLElement, p: Placement): HostMode {
   return mode;
 }
 
-const OUR_HOSTS = new Set([CARD_HOST_ID, TAG_HOST_ID]);
+const OUR_HOSTS = new Set([TAG_HOST_ID]);
 
 /** true when host sits in the run of our hosts right after anchor: two docked hosts never swap forever */
 function inRunAfter(anchor: Element, host: HTMLElement): boolean {
