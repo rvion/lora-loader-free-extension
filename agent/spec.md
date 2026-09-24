@@ -1,60 +1,49 @@
 # Spec: what the user sees
 
-## The card (civitai model pages)
+## The model page row
 
-Placement: see "Dock and free mode" below. Its dock is a full width strip
-right under civitai's header (the same spot as the tag bar, which never
-shows on a model page): one compact row centered like the tag bar, title,
-`LM` badge, version chip, status, file, `[root] / [subfolder]` without field
-labels, Download, Mark, then the tools (⇱ ⇲ ⚙) last. No title: the page
-shows it right below. The floating card keeps its title and puts the tools
-top right.
+On a model page the bar's row reads, left aligned:
 
-**Version chip** (`v1.0 ▾`): hover shows version, base model, type and the
-file that will download. Click lists every version of the model (name and
-base model); picking one points the card at it (status, where, file,
-download) without reloading civitai's page. Changing the version on
-civitai's page (the url) takes over again. It stays when the window shrinks, mobile included.
-Floating default: bottom right, as a vertical card.
+```
+[LM] [Rules ▾] [Focus ▾]  ✓ Krea 2   ⬇ Anima [LORAS] (anima/styles)   ⇱ ⚙
+```
 
-Appears on `https://civitai.com/models/<id>` and
-`https://civitai.red/models/<id>`, for the version in `?modelVersionId=`
-(else the model's first version). Follows SPA navigation: switching version
-or model updates the card without a reload. Collapsible to a small pill.
+After Rules and Focus it shows **the same chips as a listing tile** for this
+model (one per base model, see "listing cards"), built by the same code, not
+filtered by focus (you opened this model on purpose). Hover gives the same
+tooltip (where your files are, what is newer). Clicking a chip's body runs
+it; clicking its `[root] (subfolder)` part opens the target editor (below).
 
-The ⚙ tool opens a **popover** anchored under it (never inline: the docked
-row must keep its shape) with the server URL field (same setting as the
-popup: ComfyUI host, IP or full URL, e.g. `192.168.1.20:8188`) and Restart
-ComfyUI. It closes on ⚙, ✕, Esc or a click outside. It also opens by itself
-when LoRA Manager is unreachable; once closed it stays closed until the
-address is saved again. Saving it, from the card or the popup, re-checks the
-card at once.
+When LoRA Manager does not answer, the chips of this model still show, as
+`☆ Mark Anima [LORAS] (anima/styles)`: a click marks that version with its
+target for the popup's Download all (`★ Marked`, click again to unmark).
 
-Status line, one of:
+The ⚙ tool opens a **popover** anchored under it (never inline) with the
+server URL field (ComfyUI host, IP or full URL, e.g. `192.168.1.20:8188`)
+and Restart ComfyUI. It closes on ⚙, ✕, Esc or a click outside, opens by
+itself when LoRA Manager is unreachable, and once closed stays closed until
+the address is saved again. Saving it re-checks at once.
 
-| state | shown |
-|---|---|
-| checking | "Checking library…" |
-| in library | green "In library" + LoRA Manager type, then **where**: each local file of that version as `root › sub/folder/file.safetensors` (root shortened to its last two segments), full path on hover, a Copy button per file |
-| not in library | "Not in library" |
-| downloading | progress bar with percent, or the post-transfer stage text |
-| unreachable | red "LoRA Manager unreachable at <url>" + hint to open the popup |
-| unsupported type | "Type <t> is not handled" (no download controls) |
+Floating (free mode), the same row wraps into a small box.
 
-Controls (hidden when in library):
+## Target editor (tiles and model page)
 
-- **File picker**: shown only when the version has more than one weight file
-  (Civitai file types `Model`, `Pruned Model`, `Negative`, `UNet`,
-  `Diffusion Model`, `Enhancement LoRA`). Each option reads
-  `fp16 · pruned · SafeTensor · 2.1 GB`. Default is Civitai's primary file.
-  The pick is sent as `file_params: { id }` and kept on a marked item.
+Clicking the `[root] (subfolder)` part of an install chip opens a small
+popover next to it:
 
-- **Folder picker**: a root select (from LoRA Manager's roots for that model
-  type) and a subfolder **combobox** (below). The last choice is remembered per model
-  type and pre-filled.
-- **Download**: starts the download into the picked root + subfolder.
-- **Mark** / **Unmark**: adds or removes this version (with the picked
-  folder) from the marked list.
+```
+Anima · v1.0                                  ✕
+[loras ▾] / [anima/styles ▾] {base}
+File [fp16 · 2.1 GB (default) ▾]           (only when several)
+[⬇ Install here]   Reset to rule
+```
+
+- Root select (short labels) and the subfolder combobox; every change
+  applies at once to that chip as a **manual target** for that version
+  (the chip shows it with a `✎`), and is remembered as the last folder used.
+- **Install here** runs the chip (or **☆ Mark here** when LoRA Manager is
+  down). **Reset to rule** drops the manual target.
+- Manual targets live for the tab; rules stay the defaults.
 
 ## Newer versions
 
@@ -63,10 +52,8 @@ and a later `publishedAt` (version id when a date is missing). A version for
 another base model is never "newer": civitai authors often publish one
 version per base model. When several qualify, the latest one wins.
 
-- Card: when the version on screen is in the library and a newer one
-  exists, a glowing `⬆ NEWER: v2.0` chip shows; a click points the card at
-  it. The version dropdown marks each row `✓ have` and `newest`.
-- Listing: per base model, see "listing cards".
+Shown per base model by the chips, on tiles and on the model page row
+alike: `⬆ NEWER Krea 2` (see "listing cards").
 
 ## Focus (which models get install chips)
 
@@ -140,8 +127,8 @@ hover. No `…/` prefixes anywhere.
 
 ## Row height
 
-Both docked strips (card and tag bar) have the same height: a 40px frame
-with every control 26px high.
+The bar is one docked strip (40px frame, 26px controls), **left aligned** on
+every page so nothing moves between pages.
 
 ## Subfolder combobox (card and tag bar)
 

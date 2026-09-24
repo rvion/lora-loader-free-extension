@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { CardShell } from "src/content/Card.tsx";
 import { RulesStrip } from "src/content/RulesUi.tsx";
+import { TargetEditorHost } from "src/content/TargetEditor.tsx";
 import { CardSt } from "src/content/CardSt.ts";
 import {
   CARD_HOST_ID,
@@ -55,7 +56,12 @@ function mount(): void {
   reaction(() => `${tp.mode}|${tp.pos == null}`, placeTag);
 
   createRoot(card.mountPoint).render(<CardShell st={st} />);
-  createRoot(tag.mountPoint).render(<RulesStrip st={st.rules} focus={st.focus} />);
+  createRoot(tag.mountPoint).render(
+    <>
+      <RulesStrip st={st.rules} focus={st.focus} />
+      <TargetEditorHost st={st} />
+    </>,
+  );
 }
 
 mount();

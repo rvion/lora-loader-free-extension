@@ -19,6 +19,10 @@
   for "have it", red and orange for "get it".
 - Subfolder picker that works like a select: it lists every folder LoRA
   Manager knows, filters as you type, and still takes any new path.
+- The model page shows the same chips as the tiles; click a chip's folder
+  part to change where that one goes (and which file), on tiles too. When
+  LoRA Manager is down, the chips mark versions for Download all instead.
+- The bar is left aligned on every page.
 - Listing cards get one chip per base model (Krea 2, Anima, Illustrious, …)
   saying which you have, which have a newer version, and where each missing
   one would install: "⬇ Anima [loras] (anima/styles)".

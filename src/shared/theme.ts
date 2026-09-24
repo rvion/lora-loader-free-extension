@@ -24,9 +24,8 @@ ${glow(".lmf-danger", DANGER, HOT_HALO)}
 @media (prefers-reduced-motion: reduce) { .lmf-hot::after, .lmf-cool::after, .lmf-danger::after { animation: none; opacity: .5; } }
 `;
 
-/** injected once into civitai's own document for the listing overlays */
-export const PAGE_CSS = `
-${GLOW_CSS}
+/** listing chips: in civitai's document (tiles) and in the model page row's shadow root */
+export const CHIP_CSS = `
 /* below the badge row civitai draws along the top of each card: one chip per base model */
 .lmf-chips { position: absolute !important; top: 44px; left: 8px; z-index: 30; display: flex; flex-direction: column;
   align-items: flex-start; gap: 4px; max-width: calc(100% - 16px); }
@@ -55,6 +54,15 @@ ${GLOW_CSS}
   text-transform: uppercase; flex: none; color: rgba(255,255,255,.8); }
 .lmf-sub { padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,.1); font-weight: 600; font-style: italic;
   color: rgba(255,255,255,.85); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+.lmf-target { display: inline-flex; align-items: center; gap: 4px; min-width: 0; cursor: pointer; border-radius: 4px; }
+.lmf-target:hover { outline: 1px dashed rgba(255, 169, 77, .9); outline-offset: 1px; }
+`;
+
+/** injected once into civitai's own document for the listing overlays */
+export const PAGE_CSS = `
+${GLOW_CSS}
+${CHIP_CSS}
 .lmf-tip { position: fixed; z-index: 2147483600; max-width: 420px; padding: 7px 10px; border-radius: 8px; pointer-events: none;
   background: #1f2023; color: #f1f3f5; border: 1px solid #5c5f66; box-shadow: 0 10px 30px rgba(0,0,0,.65);
   font: 500 12px/1.4 system-ui, -apple-system, sans-serif; white-space: pre-wrap; word-break: break-all; }

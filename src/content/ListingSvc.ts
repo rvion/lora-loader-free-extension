@@ -1,4 +1,4 @@
-import { makeObservable } from "mobx";
+import { action, makeObservable, observable } from "mobx";
 
 import {
   baseGroups,
@@ -19,7 +19,16 @@ import type { LibraryBatch } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
 import { matchRule, type ModelFacts, type Rule, type RuleCond } from "src/shared/rules.ts";
-import { getLastFolder, getRules, onRulesChanged, type FolderPick } from "src/shared/storage.ts";
+import {
+  getLastFolder,
+  getMarked,
+  getRules,
+  onMarkedChanged,
+  onRulesChanged,
+  setMarked,
+  type FolderPick,
+  type MarkedItem,
+} from "src/shared/storage.ts";
 import { PAGE_CSS } from "src/shared/theme.ts";
 import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
 
@@ -33,14 +42,35 @@ const CHUNK = 100;
 const DOWN_BACKOFF_MS = 30_000;
 const MAX_BASE_CHIPS = 4;
 
-export type Target = { root: string; rootLabel: string; sub: string };
+export type Target = { root: string; rootLabel: string; sub: string; manual?: boolean };
+
+export type ChipAct = { kind: "install" | "mark" | "unmark"; versionId: number | null };
 
 export type Chip = {
   cls: "lmf-cool" | "lmf-hot" | "lmf-danger" | "lmf-hot lmf-busy" | "lmf-more";
   text: string;
-  /** the version a click installs; null = civitai's default version; undefined = not clickable */
-  install?: number | null;
+  /** what a click on the chip body does; absent = not clickable */
+  act?: ChipAct;
+  /** where it would land; a click on it opens the target editor for that version */
   target?: Target;
+  editVersion?: number;
+};
+
+/** a click on a chip's target: which version, and where on screen to open the editor */
+export type EditRequest = {
+  modelId: number;
+  versionId: number;
+  rect: { left: number; top: number; bottom: number };
+};
+
+/** what the target editor feeds back: manual targets and file picks per version */
+export type ListingDeps = {
+  draft: () => Rule | null;
+  onStats: (s: PageStats) => void;
+  focus: () => RuleCond | null;
+  override: (versionId: number) => FolderPick | null;
+  fileFor: (versionId: number) => number | null;
+  onEdit: (req: EditRequest) => void;
 };
 
 /** the chips on every civitai model card, one per base model (agent/spec.md "listing cards"). plain dom */
@@ -57,16 +87,20 @@ export class ListingSvc {
   private observer: MutationObserver;
   private tip = new Tip();
   private ctx: FolderCtx;
+  /** the model page's own model: fetched and watched even though it is not a tile */
+  private watched: number | null = null;
+  /** the last library call failed: chips of the watched model turn into mark chips */
+  private lmDown = false;
+  private marked = new Set<number>();
+  /** bumped after every pass: the model page row (react) reads it to re-render */
+  rev = 0;
 
-  /** draft: the rule being edited, previewed live by every chip; onStats: what is on screen */
-  constructor(
-    private draft: () => Rule | null,
-    private onStats: (s: PageStats) => void,
-    private focus: () => RuleCond | null,
-  ) {
-    makeObservable(this, {});
+  constructor(private deps: ListingDeps) {
+    makeObservable<ListingSvc, "bump">(this, { rev: observable, bump: action });
     injectPageCss();
-    this.ctx = new FolderCtx(draft, () => this.schedule());
+    this.ctx = new FolderCtx(deps, () => this.schedule());
+    void getMarked().then((m) => this.setMarked(m));
+    onMarkedChanged((m) => this.setMarked(m));
     this.observer = new MutationObserver(() => this.schedule());
     this.observer.observe(document.body, { childList: true, subtree: true });
     this.schedule();
@@ -80,6 +114,58 @@ export class ListingSvc {
   /** a rule, a draft or the last folder changed: retarget every chip */
   refresh(): void {
     this.schedule();
+  }
+
+  private bump(): void {
+    this.rev++;
+  }
+
+  private setMarked(items: MarkedItem[]): void {
+    this.marked = new Set(items.map((i) => i.versionId));
+    this.schedule();
+  }
+
+  /** the model page's model: its chips show in the bar row */
+  watch(modelId: number | null): void {
+    if (this.watched === modelId) return;
+    this.watched = modelId;
+    this.schedule();
+  }
+
+  /** the model page row: every base, unfiltered by focus; mark chips while LM is down */
+  chipsForModel(modelId: number): Chip[] {
+    void this.rev;
+    return this.chipsOf(modelId, true);
+  }
+
+  modelOf(modelId: number): CivitaiModel | null {
+    void this.rev;
+    return this.remote.get(modelId) ?? null;
+  }
+
+  get isLmDown(): boolean {
+    void this.rev;
+    return this.lmDown;
+  }
+
+  targetOf(modelId: number, versionId: number): Target | null {
+    const m = this.remote.get(modelId);
+    const v = m?.versions.find((x) => x.id === versionId);
+    return m == null || v == null ? null : this.ctx.target(m, v);
+  }
+
+  showTip(anchor: HTMLElement, modelId: number): void {
+    this.tip.show(anchor, this.tipInput(modelId));
+  }
+
+  hideTip(): void {
+    this.tip.hide();
+  }
+
+  run(modelId: number, act: ChipAct): Promise<void> {
+    if (act.kind === "install") return this.install(modelId, act.versionId);
+    if (act.versionId == null) return Promise.resolve();
+    return act.kind === "mark" ? this.mark(modelId, act.versionId) : this.unmark(act.versionId);
   }
 
   forget(modelId: number): void {
@@ -107,11 +193,15 @@ export class ListingSvc {
 
   private async pass(): Promise<void> {
     const onScreen = modelCards();
+    if (this.watched != null)
+      onScreen.push({ el: document.createElement("a"), modelId: this.watched });
     const missing = unknownIds(onScreen, this.known, this.inflight);
     if (missing.length > 0 && Date.now() >= this.retryAfter) {
       await Promise.all(chunk(missing, CHUNK).map((ids) => this.fetch(ids)));
     }
     const noRemote = [...this.known.keys()].filter((id) => !this.remote.has(id));
+    if (this.watched != null && !this.remote.has(this.watched) && !noRemote.includes(this.watched))
+      noRemote.push(this.watched);
     if (noRemote.length > 0)
       await Promise.all(chunk(noRemote, CHUNK).map((ids) => this.fetchRemote(ids)));
     this.render();
@@ -122,7 +212,9 @@ export class ListingSvc {
     try {
       const found = await send({ kind: "libraryBatch", modelIds: ids });
       for (const id of ids) this.known.set(id, found[String(id)] ?? null);
+      this.lmDown = false;
     } catch (e) {
+      this.lmDown = true;
       this.retryAfter = Date.now() + DOWN_BACKOFF_MS;
       console.warn("[lm-free] listing chips paused 30 s:", errorMessage(e));
     } finally {
@@ -140,13 +232,16 @@ export class ListingSvc {
     }
   }
 
-  private chipsOf(modelId: number): Chip[] {
+  private chipsOf(modelId: number, modelPage = false): Chip[] {
     const m = this.remote.get(modelId) ?? null;
     return chipsFor({
       presence: this.known.has(modelId) ? (this.known.get(modelId) ?? null) : undefined,
       remote: m,
       jobs: this.jobs,
-      focus: this.focus(),
+      focus: modelPage ? null : this.deps.focus(),
+      max: modelPage ? Infinity : MAX_BASE_CHIPS,
+      mode: modelPage && this.lmDown ? "mark" : "install",
+      isMarked: (vid) => this.marked.has(vid),
       target: (v) => (m == null ? null : this.ctx.target(m, v)),
     });
   }
@@ -154,12 +249,13 @@ export class ListingSvc {
   /** idempotent: rebuilds a card's chips only when their content changed, so it never feeds the observer a loop */
   private render(): void {
     const cards = modelCards();
-    this.onStats(
+    this.deps.onStats(
       pageStats(
         cards.map((c) => this.remote.get(c.modelId) ?? null),
-        this.draft(),
+        this.deps.draft(),
       ),
     );
+    this.bump();
     for (const c of cards) {
       const chips = this.chipsOf(c.modelId);
       const existing = c.el.querySelector<HTMLElement>(`:scope > [${CHIPS_ATTR}]`);
@@ -189,11 +285,20 @@ export class ListingSvc {
     box.addEventListener("mousedown", swallow);
     box.addEventListener("click", (e) => {
       swallow(e);
-      const el =
-        e.target instanceof Element ? e.target.closest<HTMLElement>("[data-install]") : null;
-      const raw = el?.dataset.install;
-      if (raw == null) return;
-      void this.install(modelId, raw === "" ? null : Number(raw));
+      const t = e.target instanceof Element ? e.target : null;
+      const edit = t?.closest<HTMLElement>("[data-edit]");
+      if (edit?.dataset.edit != null) {
+        const r = edit.getBoundingClientRect();
+        this.deps.onEdit({
+          modelId,
+          versionId: Number(edit.dataset.edit),
+          rect: { left: r.left, top: r.top, bottom: r.bottom },
+        });
+        return;
+      }
+      const chip = t?.closest<HTMLElement>("[data-act]");
+      if (chip?.dataset.act == null) return;
+      void this.run(modelId, parseAct(chip.dataset.act));
     });
     box.addEventListener("pointerenter", () => this.tip.show(box, this.tipInput(modelId)));
     box.addEventListener("pointerleave", () => this.tip.hide());
@@ -225,6 +330,34 @@ export class ListingSvc {
     this.schedule();
   }
 
+  /** a version with its target and file, onto the popup's marked list */
+  private async mark(modelId: number, versionId: number): Promise<void> {
+    const m = this.remote.get(modelId);
+    const v = m?.versions.find((x) => x.id === versionId);
+    const prefix = m != null ? lmPrefixForCivitaiType(m.type) : null;
+    const t = m != null && v != null ? this.ctx.target(m, v) : null;
+    if (m == null || v == null || prefix == null || t == null) return;
+    const fileId = this.deps.fileFor(v.id) ?? weightFiles(v)[0]?.id ?? null;
+    const file = v.files.find((f) => f.id === fileId);
+    const items = (await getMarked()).filter((i) => i.versionId !== v.id);
+    await setMarked([
+      ...items,
+      {
+        modelId,
+        versionId: v.id,
+        modelName: m.name,
+        versionName: `${v.name}${v.baseModel != null ? ` · ${v.baseModel}` : ""}`,
+        prefix,
+        folder: { root: t.root, sub: t.sub },
+        file: file != null && v.files.length > 1 ? { id: file.id, label: file.name } : null,
+      },
+    ]);
+  }
+
+  private async unmark(versionId: number): Promise<void> {
+    await setMarked((await getMarked()).filter((i) => i.versionId !== versionId));
+  }
+
   /** versionId null: civitai's default (first listed) version */
   async install(modelId: number, versionId: number | null): Promise<void> {
     const running = versionId != null ? this.jobs.get(versionId) : undefined;
@@ -249,7 +382,7 @@ export class ListingSvc {
           versionId: v.id,
           prefix,
           folder: { root: t.root, sub: t.sub },
-          fileId: weightFiles(v)[0]?.id ?? null,
+          fileId: this.deps.fileFor(v.id) ?? weightFiles(v)[0]?.id ?? null,
         },
       });
       const started = v.id;
@@ -275,7 +408,7 @@ class FolderCtx {
   private loading = new Set<LmPrefix>();
 
   constructor(
-    private draft: () => Rule | null,
+    private deps: Pick<ListingDeps, "draft" | "override">,
     private changed: () => void,
   ) {
     void getRules().then((r) => {
@@ -326,16 +459,25 @@ class FolderCtx {
       }
       return null;
     }
+    const labels = rootLabels(roots);
+    const manual = this.deps.override(v.id);
+    if (manual != null)
+      return {
+        root: manual.root,
+        rootLabel: labels.get(manual.root) ?? manual.root,
+        sub: manual.sub,
+        manual: true,
+      };
     const r = resolveFolder({
       roots,
       model: factsOf(m),
       baseModel: v.baseModel,
-      rules: withDraft(this.rules, this.draft()),
+      rules: withDraft(this.rules, this.deps.draft()),
       last: this.last.get(prefix) ?? null,
     });
     return {
       root: r.pick.root,
-      rootLabel: rootLabels(roots).get(r.pick.root) ?? r.pick.root,
+      rootLabel: labels.get(r.pick.root) ?? r.pick.root,
       sub: r.pick.sub,
     };
   }
@@ -348,6 +490,11 @@ export type ChipInput = {
   jobs: ReadonlyMap<number, DownloadState>;
   /** focus in force: install chips only for matching versions */
   focus?: RuleCond | null;
+  /** how many base chips before +N */
+  max?: number;
+  /** mark: LM is down, chips queue versions for the popup's Download all */
+  mode?: "install" | "mark";
+  isMarked?: (versionId: number) => boolean;
   target: (v: CivitaiVersion) => Target | null;
 };
 
@@ -355,13 +502,32 @@ const baseName = (g: BaseGroup) => g.base ?? "other";
 
 /** agent/spec.md "listing cards": one chip per base model, or a stand in until civitai's data is in */
 export function chipsFor(p: ChipInput): Chip[] {
+  const max = p.max ?? MAX_BASE_CHIPS;
+  if (p.mode === "mark") {
+    if (p.remote == null) return [];
+    return baseGroups(p.remote.versions, [])
+      .slice(0, max)
+      .map((g): Chip => {
+        const id = g.latest.id;
+        const t = p.target(g.latest);
+        const marked = p.isMarked?.(id) === true;
+        return {
+          cls: marked ? "lmf-cool" : "lmf-hot",
+          text: `${marked ? "★ Marked" : "☆ Mark"} ${baseName(g)}`,
+          act: { kind: marked ? "unmark" : "mark", versionId: id },
+          ...(t != null ? { target: t, editVersion: id } : {}),
+        };
+      });
+  }
   if (p.presence === undefined) return [];
   const localIds = p.presence?.versions.map((v) => v.versionId) ?? [];
   const focus = p.focus ?? null;
   if (p.remote == null) {
     // under focus an unknown model gets no install chip: its base model is not known yet
     if (p.presence == null)
-      return focus != null ? [] : [{ cls: "lmf-hot", text: "⬇ Install", install: null }];
+      return focus != null
+        ? []
+        : [{ cls: "lmf-hot", text: "⬇ Install", act: { kind: "install", versionId: null } }];
     const n = p.presence.versions.length;
     return [{ cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" }];
   }
@@ -375,43 +541,59 @@ export function chipsFor(p: ChipInput): Chip[] {
       p.jobs.has(g.latest.id) ||
       matchRule(focus, facts, g.latest.baseModel),
   );
-  const chips = groups.slice(0, MAX_BASE_CHIPS).map((g): Chip => {
+  const chips = groups.slice(0, max).map((g): Chip => {
     const name = baseName(g);
-    const job = p.jobs.get(g.latest.id);
+    const id = g.latest.id;
+    const install: ChipAct = { kind: "install", versionId: id };
+    const job = p.jobs.get(id);
     if (job != null && job.kind !== "idle" && job.kind !== "done") {
       if (job.kind === "failed")
-        return { cls: "lmf-danger", text: `✕ ${name} failed`, install: g.latest.id };
+        return { cls: "lmf-danger", text: `✕ ${name} failed`, act: install };
       const progress = job.kind === "starting" ? "…" : (job.stage ?? `${Math.round(job.percent)}%`);
       return { cls: "lmf-hot lmf-busy", text: `⬇ ${name} ${progress}` };
     }
-    if (hasNewer(g)) return { cls: "lmf-hot", text: `⬆ NEWER ${name}`, install: g.latest.id };
-    if (g.have != null) return { cls: "lmf-cool", text: `✓ ${name}` };
+    if (g.have != null && !hasNewer(g)) return { cls: "lmf-cool", text: `✓ ${name}` };
     const t = p.target(g.latest);
+    const text = hasNewer(g) ? `⬆ NEWER ${name}` : `⬇ ${name}`;
     return t != null
-      ? { cls: "lmf-hot", text: `⬇ ${name}`, install: g.latest.id, target: t }
-      : { cls: "lmf-hot", text: `⬇ ${name}`, install: g.latest.id };
+      ? { cls: "lmf-hot", text, act: install, target: t, editVersion: id }
+      : { cls: "lmf-hot", text, act: install };
   });
-  if (groups.length > MAX_BASE_CHIPS)
-    chips.push({ cls: "lmf-more", text: `+${groups.length - MAX_BASE_CHIPS}` });
+  if (groups.length > max) chips.push({ cls: "lmf-more", text: `+${groups.length - max}` });
   return chips;
+}
+
+export function actKey(a: ChipAct): string {
+  return `${a.kind}:${a.versionId ?? ""}`;
+}
+
+export function parseAct(raw: string): ChipAct {
+  const [kind, id] = raw.split(":");
+  const k = kind === "mark" || kind === "unmark" ? kind : "install";
+  return { kind: k, versionId: id != null && id !== "" ? Number(id) : null };
 }
 
 function chipEl(c: Chip): HTMLElement {
   const el = document.createElement("span");
   el.className = `lmf-chip ${c.cls}`;
-  if (c.install !== undefined) {
-    el.dataset.install = c.install == null ? "" : String(c.install);
+  if (c.act != null) {
+    el.dataset.act = actKey(c.act);
     el.setAttribute("role", "button");
   }
   el.append(c.text);
   if (c.target != null) {
+    const target = document.createElement("span");
+    target.className = "lmf-target";
+    if (c.editVersion != null) target.dataset.edit = String(c.editVersion);
+    target.title = "Change where this one goes";
     const root = document.createElement("span");
     root.className = "lmf-root";
     root.textContent = c.target.rootLabel;
     const sub = document.createElement("span");
     sub.className = "lmf-sub";
-    sub.textContent = c.target.sub !== "" ? c.target.sub : "(root)";
-    el.append(root, sub);
+    sub.textContent = `${c.target.manual === true ? "✎ " : ""}${c.target.sub !== "" ? c.target.sub : "(root)"}`;
+    target.append(root, sub);
+    el.append(target);
   }
   return el;
 }

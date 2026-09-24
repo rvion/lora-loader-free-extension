@@ -51,6 +51,18 @@ One root per surface, per build/app-state-tree: `CardSt` (content) and
 `PopupSt` (popup), services hang off it, components hold no business state.
 `Query<T>` in `src/shared/Query.ts` is the one async primitive.
 
+## One chip engine
+
+`ListingSvc` builds every chip, on tiles (plain dom, `chipEl`) and on the
+model page row (react, `ChipView` in Card.tsx), from the same `chipsFor`
+data. It watches the model page's own model (`watch`) even though it is
+not a tile, bumps an observable `rev` after each pass so the react row
+re-renders, and switches that row to mark chips while LoRA Manager is down.
+`EditSvc` holds manual targets and file picks per version for the tab; the
+`TargetEditor` popover edits them and renders in whichever shadow root is
+attached (card host on model pages, strip host elsewhere). The old card
+services (library, folder, file, download, mark) are gone.
+
 ## Listing cards
 
 `ListingSvc` (on `CardSt`, so it runs on every civitai page) owns one

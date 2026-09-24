@@ -1,53 +1,33 @@
 import { makeAutoObservable, reaction, runInAction } from "mobx";
 
+import { AdSvc } from "src/content/AdSvc.ts";
+import { EditSvc } from "src/content/EditSvc.ts";
+import { FocusSvc } from "src/content/FocusSvc.ts";
+import { factsOf, ListingSvc } from "src/content/ListingSvc.ts";
+import { PlacementSvc } from "src/content/PlacementSvc.ts";
+import { RulesSvc } from "src/content/RulesSvc.ts";
 import {
   fetchCivitaiModel,
-  fileLabel,
   lmPrefixForCivitaiType,
-  newerVersion,
   parseCivitaiModelUrl,
-  weightFiles,
-  type CivitaiFile,
   type CivitaiModel,
   type CivitaiPageRef,
   type CivitaiVersion,
   type LmPrefix,
 } from "src/shared/civitai.ts";
-import { suggestFolder, type FolderSuggestion } from "src/shared/folderRules.ts";
-import type { ModelFacts, Rule } from "src/shared/rules.ts";
-import type { LibraryBatch, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
-import { AdSvc } from "src/content/AdSvc.ts";
-import { ListingSvc } from "src/content/ListingSvc.ts";
-import { PlacementSvc } from "src/content/PlacementSvc.ts";
-import { factsOf } from "src/content/ListingSvc.ts";
-import { FocusSvc } from "src/content/FocusSvc.ts";
-import { RulesSvc } from "src/content/RulesSvc.ts";
 import { Query } from "src/shared/Query.ts";
 import { RestartSt } from "src/shared/RestartSt.ts";
-import {
-  getMarked,
-  getSettings,
-  onMarkedChanged,
-  onSettingsChanged,
-  saveLmUrl,
-  setLastFolder,
-  setMarked,
-  type FolderPick,
-  type MarkedItem,
-} from "src/shared/storage.ts";
-import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
+import { matchRule } from "src/shared/rules.ts";
+import { getSettings, onSettingsChanged, saveLmUrl } from "src/shared/storage.ts";
+import { errorMessage } from "src/shared/watchDownload.ts";
 
-/** root of the card: one per page, lives as long as the tab */
+/** root of the page overlay: one per tab (agent/architecture.md) */
 export class CardSt {
   page: PageSvc;
-  library: LibrarySvc;
-  folder: FolderSvc;
-  download: DownloadSvc;
-  marks: MarkSvc;
   server: ServerSvc;
   restart: RestartSt;
-  file: FileSvc;
+  edit: EditSvc;
   listing: ListingSvc;
   ads: AdSvc;
   placement: PlacementSvc;
@@ -57,55 +37,41 @@ export class CardSt {
 
   constructor() {
     this.page = new PageSvc();
-    this.server = new ServerSvc(this);
-    this.file = new FileSvc(this);
     this.focus = new FocusSvc();
-    this.listing = new ListingSvc(
-      () => this.rules.draftRule,
-      (s) => this.rules.setStats(s),
-      () => this.focus.active,
-    );
+    this.rules = new RulesSvc(() => this.page.isModelPage);
+    this.edit = new EditSvc();
+    this.listing = new ListingSvc({
+      draft: () => this.rules.draftRule,
+      onStats: (s) => this.rules.setStats(s),
+      focus: () => this.focus.active,
+      override: (vid) => this.edit.overrides.get(vid) ?? null,
+      fileFor: (vid) => this.edit.files.get(vid) ?? null,
+      onEdit: (req) => void this.edit.open(req),
+    });
+    this.edit.link(this.listing);
+    this.server = new ServerSvc(this);
     this.ads = new AdSvc();
     this.placement = new PlacementSvc("card");
-    this.rules = new RulesSvc(() => this.page.isModelPage);
     this.restart = new RestartSt({
       restart: () => send({ kind: "restartComfy" }),
       ping: () => send({ kind: "ping" }),
-      onBack: () => {
-        this.listing.forgetAll();
-        void this.refreshForVersion();
-      },
+      onBack: () => this.listing.forgetAll(),
     });
-    this.library = new LibrarySvc(this);
-    this.folder = new FolderSvc(this);
-    this.download = new DownloadSvc(this);
-    this.marks = new MarkSvc(this);
     makeAutoObservable(this, {
       page: false,
-      library: false,
-      folder: false,
-      download: false,
-      marks: false,
       server: false,
       restart: false,
-      file: false,
+      edit: false,
       listing: false,
       ads: false,
       placement: false,
       rules: false,
       focus: false,
     });
+    // focus and the rule being edited retarget every chip, tiles and model page row alike
     reaction(
-      () => JSON.stringify(this.focus.active),
+      () => JSON.stringify([this.focus.active, this.rules.draftRule]),
       () => this.listing.refresh(),
-    );
-    // the rule being edited retargets every listing chip, and the card's folder, as you type
-    reaction(
-      () => JSON.stringify(this.rules.draftRule),
-      () => {
-        this.listing.refresh();
-        void this.refreshFolder();
-      },
     );
   }
 
@@ -118,50 +84,25 @@ export class CardSt {
     this.rules.onUrl(href);
     const ref = parseCivitaiModelUrl(href);
     if (!this.page.setRef(ref)) return;
-    this.download.reset();
-    this.file.reset();
-    if (ref == null) return;
-    void this.page.load().then(() => this.refreshForVersion());
+    this.listing.watch(ref?.modelId ?? null);
+    if (ref != null) void this.page.load();
   }
 
-  /** points the card at another version without touching civitai's url */
-  pickVersion(versionId: number): void {
-    const ref = this.page.ref;
-    if (ref == null || !this.page.setRef({ ...ref, versionId })) return;
-    this.download.reset();
-    this.file.reset();
-    void this.refreshForVersion();
-  }
-
-  /** the default folder from the rules (the draft first while the rules popover is open) */
-  refreshFolder(): Promise<void> {
+  /** the rules popover on a model page: the first rule this model matches, else its version's base model */
+  openRules(): Promise<void> {
     const m = this.page.model.result;
     const v = this.page.version;
-    const prefix = this.page.prefix;
-    if (m == null || v == null || prefix == null) return Promise.resolve();
-    return this.folder.load(prefix, factsOf(m), v.baseModel);
-  }
-
-  /** the rules popover on a model page: starts from the rule that applied, else this version's base model */
-  openRules(): Promise<void> {
-    const base = this.page.version?.baseModel;
-    const via = this.folder.source === "rule" ? this.folder.via : null;
+    const existing =
+      m == null
+        ? null
+        : (this.rules.rules.find((r) =>
+            m.versions.some((x) => matchRule(r.cond, factsOf(m), x.baseModel)),
+          ) ?? null);
+    const base = v?.baseModel;
     return this.rules.open({
-      existing: via,
+      existing,
       cond: base != null ? { tags: [], words: [], bases: [base], types: [] } : null,
     });
-  }
-
-  async refreshForVersion(): Promise<void> {
-    const m = this.page.model.result;
-    const v = this.page.version;
-    const prefix = this.page.prefix;
-    if (m == null || v == null || prefix == null) return;
-    await Promise.all([
-      this.library.check(),
-      this.refreshFolder(),
-      this.download.resume(m.id, v.id),
-    ]);
   }
 }
 
@@ -187,7 +128,7 @@ export class ServerSvc {
     if (changed && recheck) {
       this.isEditing = false;
       this.dismissed = false;
-      void this.st.refreshForVersion();
+      this.st.listing.forgetAll();
     }
   }
 
@@ -204,7 +145,7 @@ export class ServerSvc {
   }
 
   get lmUnreachable(): boolean {
-    return this.st.library.status.error != null || this.st.folder.choices.error != null;
+    return this.st.listing.isLmDown;
   }
 
   setDraft(v: string): void {
@@ -224,7 +165,7 @@ export class ServerSvc {
         this.draft = saved;
         this.dismissed = false;
       });
-      if (saved === this.url) void this.st.refreshForVersion();
+      if (saved === this.url) this.st.listing.forgetAll();
     } catch (e) {
       runInAction(() => (this.saveError = errorMessage(e)));
     }
@@ -232,36 +173,6 @@ export class ServerSvc {
 }
 
 /** which civitai file of the current version to download */
-export class FileSvc {
-  pickedId: number | null = null;
-
-  constructor(private st: CardSt) {
-    makeAutoObservable<FileSvc, "st">(this, { st: false });
-  }
-
-  reset(): void {
-    this.pickedId = null;
-  }
-
-  pick(id: number): void {
-    this.pickedId = id;
-  }
-
-  get files(): CivitaiFile[] {
-    const v = this.st.page.version;
-    return v == null ? [] : weightFiles(v);
-  }
-
-  /** the explicit pick, else the primary file (weightFiles sorts it first) */
-  get picked(): CivitaiFile | null {
-    return this.files.find((f) => f.id === this.pickedId) ?? this.files[0] ?? null;
-  }
-
-  label(f: CivitaiFile): string {
-    return fileLabel(f);
-  }
-}
-
 export class PageSvc {
   ref: CivitaiPageRef | null = null;
   model: Query<CivitaiModel>;
@@ -325,239 +236,5 @@ export class PageSvc {
 
   get isModelPage(): boolean {
     return this.ref != null;
-  }
-}
-
-export class LibrarySvc {
-  status: Query<LibraryStatus>;
-  /** every version of this model in the library, for newer version detection */
-  local: Query<LibraryBatch[string] | null>;
-
-  constructor(private st: CardSt) {
-    this.status = new Query(() => {
-      const m = this.st.page.model.result;
-      const v = this.st.page.version;
-      if (m == null || v == null) return Promise.reject(new Error("no version on this page"));
-      return send({ kind: "libraryStatus", modelId: m.id, versionId: v.id });
-    });
-    this.local = new Query(async () => {
-      const m = this.st.page.model.result;
-      if (m == null) return null;
-      const found = await send({ kind: "libraryBatch", modelIds: [m.id] });
-      return found[String(m.id)] ?? null;
-    });
-    makeAutoObservable<LibrarySvc, "st">(this, { st: false, status: false, local: false });
-  }
-
-  async check(): Promise<void> {
-    await Promise.all([this.status.run(), this.local.run()]);
-  }
-
-  get inLibrary(): boolean {
-    return this.status.result?.exists === true;
-  }
-
-  get localIds(): number[] {
-    return this.local.result?.versions.map((v) => v.versionId) ?? [];
-  }
-
-  /** agent/spec.md "newer versions" */
-  get newer(): CivitaiVersion | null {
-    const m = this.st.page.model.result;
-    return m == null ? null : newerVersion(m.versions, this.localIds);
-  }
-}
-
-export class FolderSvc {
-  choices: Query<FolderSuggestion>;
-  pick: FolderPick = { root: "", sub: "" };
-  /** the rule that chose the pick, when source is "rule" */
-  via: Rule | null = null;
-  /** rule: a rule chose it; none: no rule matched; hand: edited in the card */
-  source: "rule" | "none" | "hand" = "none";
-  private prefix: LmPrefix | null = null;
-  private facts: ModelFacts | null = null;
-  private baseModel: string | null = null;
-
-  constructor(private st: CardSt) {
-    this.choices = new Query(() => {
-      const prefix = this.prefix;
-      const facts = this.facts;
-      if (prefix == null || facts == null)
-        return Promise.reject(new Error("unsupported model type"));
-      return suggestFolder(prefix, facts, this.baseModel, this.st.rules.draftRule);
-    });
-    makeAutoObservable<FolderSvc, "st" | "prefix" | "facts" | "baseModel">(this, {
-      st: false,
-      choices: false,
-      prefix: false,
-      facts: false,
-      baseModel: false,
-    });
-  }
-
-  async load(prefix: LmPrefix, facts: ModelFacts, baseModel: string | null): Promise<void> {
-    this.prefix = prefix;
-    this.facts = facts;
-    this.baseModel = baseModel;
-    await this.choices.run();
-    runInAction(() => {
-      const r = this.choices.result;
-      if (r == null) return;
-      this.pick = r.pick;
-      this.via = r.via;
-      this.source = r.via != null ? "rule" : "none";
-    });
-  }
-
-  setRoot(root: string): void {
-    this.pick = { ...this.pick, root };
-    this.source = "hand";
-    this.remember();
-  }
-
-  setSub(sub: string): void {
-    this.pick = { ...this.pick, sub: normalizeSub(sub) };
-    this.source = "hand";
-    this.remember();
-  }
-
-  private remember(): void {
-    const prefix = this.st.page.prefix;
-    if (prefix != null) void setLastFolder(prefix, this.pick);
-  }
-}
-
-export function normalizeSub(raw: string): string {
-  return raw
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, "")
-    .replace(/\/{2,}/g, "/");
-}
-
-export class DownloadSvc {
-  state: DownloadState = { kind: "idle" };
-  private generation = 0;
-
-  constructor(private st: CardSt) {
-    makeAutoObservable<DownloadSvc, "st" | "generation">(this, { st: false, generation: false });
-  }
-
-  reset(): void {
-    this.generation++;
-    this.state = { kind: "idle" };
-  }
-
-  setState(gen: number, s: DownloadState): void {
-    if (gen !== this.generation) return;
-    this.state = s;
-    if (s.kind === "done") {
-      const id = this.st.page.model.result?.id;
-      if (id != null) this.st.listing.forget(id);
-      void this.st.library.check();
-    }
-  }
-
-  async start(): Promise<void> {
-    const m = this.st.page.model.result;
-    const v = this.st.page.version;
-    const prefix = this.st.page.prefix;
-    if (m == null || v == null || prefix == null) return;
-    const gen = ++this.generation;
-    this.state = { kind: "starting" };
-    try {
-      const r = await send({
-        kind: "startDownload",
-        target: {
-          modelId: m.id,
-          versionId: v.id,
-          prefix,
-          folder: this.st.folder.pick,
-          fileId: this.st.file.picked?.id ?? null,
-        },
-      });
-      await this.st.marks.remove(v.id);
-      this.watch(gen, m.id, v.id, r.downloadId);
-    } catch (e) {
-      this.setState(gen, { kind: "failed", message: errorMessage(e) });
-    }
-  }
-
-  async resume(modelId: number, versionId: number): Promise<void> {
-    const gen = this.generation;
-    const downloadId = await send({ kind: "activeDownload", versionId });
-    if (downloadId == null) return;
-    this.setState(gen, { kind: "running", percent: 0, stage: null });
-    this.watch(gen, modelId, versionId, downloadId);
-  }
-
-  private watch(gen: number, modelId: number, versionId: number, downloadId: string): void {
-    watchDownload({
-      modelId,
-      versionId,
-      downloadId,
-      isAlive: () => gen === this.generation,
-      onState: (s) => this.setState(gen, s),
-    });
-  }
-
-  get isBusy(): boolean {
-    return this.state.kind === "starting" || this.state.kind === "running";
-  }
-}
-
-export class MarkSvc {
-  items: MarkedItem[] = [];
-
-  constructor(private st: CardSt) {
-    makeAutoObservable<MarkSvc, "st">(this, { st: false });
-    void getMarked().then((items) => this.setItems(items));
-    onMarkedChanged((items) => this.setItems(items));
-  }
-
-  setItems(items: MarkedItem[]): void {
-    this.items = items;
-  }
-
-  get isMarked(): boolean {
-    const v = this.st.page.version;
-    return v != null && this.items.some((i) => i.versionId === v.id);
-  }
-
-  async toggle(): Promise<void> {
-    const m = this.st.page.model.result;
-    const v = this.st.page.version;
-    const prefix = this.st.page.prefix;
-    if (m == null || v == null || prefix == null) return;
-    const current = await getMarked();
-    const without = current.filter((i) => i.versionId !== v.id);
-    const next =
-      without.length !== current.length
-        ? without
-        : [
-            ...current,
-            {
-              modelId: m.id,
-              versionId: v.id,
-              modelName: m.name,
-              versionName: v.name,
-              prefix,
-              folder: this.st.folder.pick,
-              file: this.markedFile(),
-            },
-          ];
-    await setMarked(next);
-  }
-
-  /** only an explicit choice among several files is worth keeping */
-  private markedFile(): { id: number; label: string } | null {
-    const f = this.st.file.picked;
-    return f != null && this.st.file.files.length > 1 ? { id: f.id, label: fileLabel(f) } : null;
-  }
-
-  async remove(versionId: number): Promise<void> {
-    const current = await getMarked();
-    const next = current.filter((i) => i.versionId !== versionId);
-    if (next.length !== current.length) await setMarked(next);
   }
 }

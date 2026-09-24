@@ -1,9 +1,11 @@
 import { expect, test } from "bun:test";
 
 import {
+  actKey,
   chipsFor,
   chunk,
   pageStats,
+  parseAct,
   tipLines,
   unknownIds,
   type Target,
@@ -55,7 +57,7 @@ test("ids are sent in chunks", () => {
 test("no chip before LM answers; stand ins before civitai answers", () => {
   expect(chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target })).toEqual([]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target })).toEqual([
-    { cls: "lmf-hot", text: "⬇ Install", install: null },
+    { cls: "lmf-hot", text: "⬇ Install", act: { kind: "install", versionId: null } },
   ]);
   expect(chipsFor({ presence: have(10, 11), remote: null, jobs: noJobs, target })[0]?.text).toBe(
     "✓ LM ×2",
@@ -64,7 +66,7 @@ test("no chip before LM answers; stand ins before civitai answers", () => {
 
 test("one chip per base model says exactly which one you have", () => {
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target });
-  expect(chips.map((c) => [c.text, c.install ?? "-", c.target?.sub ?? "-"])).toEqual([
+  expect(chips.map((c) => [c.text, c.act?.versionId ?? "-", c.target?.sub ?? "-"])).toEqual([
     ["✓ Krea 2", "-", "-"],
     ["⬇ Anima", 11, "anima/styles"],
     ["⬇ Illustrious", 12, "illustrious/styles"],
@@ -74,7 +76,13 @@ test("one chip per base model says exactly which one you have", () => {
 test("a later version of a base you have is flagged newer and installs that one", () => {
   const m = model(ver(20, "Krea 2", "2026-09-01"), ver(21, "Krea 2", "2026-09-20"));
   expect(chipsFor({ presence: have(20), remote: m, jobs: noJobs, target })).toEqual([
-    { cls: "lmf-hot", text: "⬆ NEWER Krea 2", install: 21 },
+    {
+      cls: "lmf-hot",
+      text: "⬆ NEWER Krea 2",
+      act: { kind: "install", versionId: 21 },
+      target: { root: "/m/loras", rootLabel: "loras", sub: "krea 2/styles" },
+      editVersion: 21,
+    },
   ]);
 });
 
@@ -144,4 +152,41 @@ test("focus hides install chips of other bases, never what you have", () => {
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target, focus });
   expect(chips.map((c) => c.text)).toEqual(["✓ Krea 2", "⬇ Illustrious"]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target, focus })).toEqual([]);
+});
+
+test("lm down on a model page: every base becomes a mark chip, marked ones unmark", () => {
+  const chips = chipsFor({
+    presence: undefined,
+    remote: kai,
+    jobs: noJobs,
+    target,
+    mode: "mark",
+    isMarked: (v) => v === 11,
+  });
+  expect(chips.map((c) => [c.text, c.act?.kind])).toEqual([
+    ["☆ Mark Krea 2", "mark"],
+    ["★ Marked Anima", "unmark"],
+    ["☆ Mark Illustrious", "mark"],
+  ]);
+});
+
+test("a chip's click action survives the dom round trip", () => {
+  for (const a of [
+    { kind: "install", versionId: 12 },
+    { kind: "install", versionId: null },
+    { kind: "unmark", versionId: 3 },
+  ] as const)
+    expect(parseAct(actKey(a))).toEqual(a);
+});
+
+test("a manual target is carried by the chip", () => {
+  const manual = (v: CivitaiVersion): Target => ({ ...target(v), sub: "mine", manual: true });
+  expect(
+    chipsFor({ presence: null, remote: kai, jobs: noJobs, target: manual })[0]?.target,
+  ).toEqual({
+    root: "/m/loras",
+    rootLabel: "loras",
+    sub: "mine",
+    manual: true,
+  });
 });

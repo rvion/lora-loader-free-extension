@@ -1,34 +1,34 @@
-import { useRef, useState } from "react";
 import { obs } from "rvlib-mobx";
+import { useRef } from "react";
 
 import type { CardSt } from "src/content/CardSt.ts";
+import type { Chip } from "src/content/ListingSvc.ts";
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
 import { usePopoverDismiss } from "src/content/popover.ts";
 import { FocusButton, RulesButton } from "src/content/RulesUi.tsx";
-import { SubfolderBox } from "src/content/SubfolderBox.tsx";
-import { summarizeCond } from "src/shared/rules.ts";
-import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
+import { TargetEditor } from "src/content/TargetEditor.tsx";
+import { lmPrefixForCivitaiType } from "src/shared/civitai.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 
 export const CardShell = obs(function CardShell(p: { st: CardSt }) {
   return (
-    <Movable place={p.st.placement} className="wrap">
-      <Card st={p.st} />
-    </Movable>
+    <>
+      <Movable place={p.st.placement} className="wrap">
+        <Card st={p.st} />
+      </Movable>
+      <TargetEditor st={p.st.edit} lmDown={p.st.listing.isLmDown} />
+    </>
   );
 });
 
+/** the model page row: Rules, Focus, then this model's chips, the same ones its tile gets */
 export const Card = obs(function Card(p: { st: CardSt }) {
   const st = p.st;
   if (!st.page.isModelPage) return null;
   if (st.collapsed)
     return (
-      <button
-        className={`pill ${st.library.inLibrary ? "lmf-cool" : "lmf-hot"}`}
-        onClick={() => st.toggleCollapsed()}
-        title="LoRA Manager"
-      >
-        <StatusDot st={st} /> {st.library.inLibrary ? "✓ LM" : "⬇ LM"}
+      <button className="pill lmf-hot" onClick={() => st.toggleCollapsed()} title="LoRA Manager">
+        LM
       </button>
     );
   return (
@@ -43,7 +43,7 @@ export const Card = obs(function Card(p: { st: CardSt }) {
         <FocusButton st={st.focus} picks={st.page.picks} />
       </span>
       <DockMiss place={st.placement} />
-      <Body st={st} />
+      <ModelChips st={st} />
       <span className="tools">
         <DockButton place={st.placement} />
         <button
@@ -63,6 +63,78 @@ export const Card = obs(function Card(p: { st: CardSt }) {
     </div>
   );
 });
+
+const ModelChips = obs(function ModelChips(p: { st: CardSt }) {
+  const st = p.st;
+  const model = st.page.model;
+  if (model.error != null) return <span className="error">Civitai: {model.error.message}</span>;
+  const m = model.result;
+  if (m == null) return <span className="muted">Loading model…</span>;
+  if (lmPrefixForCivitaiType(m.type) == null)
+    return <span className="muted">Type {m.type} is not handled</span>;
+  const chips = st.listing.chipsForModel(m.id);
+  if (chips.length === 0)
+    return (
+      <span className="muted">
+        {st.listing.isLmDown ? "LoRA Manager unreachable (⚙)" : "Checking library…"}
+      </span>
+    );
+  return (
+    <span className="row-chips" onPointerLeave={() => st.listing.hideTip()}>
+      {chips.map((c, i) => (
+        <ChipView
+          key={`${i}:${c.text}`}
+          chip={c}
+          onAct={() => c.act != null && void st.listing.run(m.id, c.act)}
+          onEdit={(rect) =>
+            c.editVersion != null &&
+            void st.edit.open({ modelId: m.id, versionId: c.editVersion, rect })
+          }
+          onHover={(el) => st.listing.showTip(el, m.id)}
+        />
+      ))}
+    </span>
+  );
+});
+
+/** a chip as react renders it; tiles render the same Chip data as plain dom (ListingSvc chipEl) */
+function ChipView(p: {
+  chip: Chip;
+  onAct: () => void;
+  onEdit: (rect: { left: number; top: number; bottom: number }) => void;
+  onHover: (el: HTMLElement) => void;
+}) {
+  const c = p.chip;
+  return (
+    <span
+      className={`lmf-chip ${c.cls}`}
+      role={c.act != null ? "button" : undefined}
+      data-act={c.act != null ? "1" : undefined}
+      onClick={p.onAct}
+      onPointerEnter={(e) => p.onHover(e.currentTarget)}
+    >
+      {c.text}
+      {c.target != null && (
+        <span
+          className="lmf-target"
+          data-edit="1"
+          title="Change where this one goes"
+          onClick={(e) => {
+            e.stopPropagation();
+            const r = e.currentTarget.getBoundingClientRect();
+            p.onEdit({ left: r.left, top: r.top, bottom: r.bottom });
+          }}
+        >
+          <span className="lmf-root">{c.target.rootLabel}</span>
+          <span className="lmf-sub">
+            {c.target.manual === true ? "✎ " : ""}
+            {c.target.sub !== "" ? c.target.sub : "(root)"}
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}
 
 /** the ⚙ popover: anchored under the tools, never inline, so the docked row keeps its shape */
 const ServerPopover = obs(function ServerPopover(p: { st: CardSt }) {
@@ -95,268 +167,6 @@ const ServerPopover = obs(function ServerPopover(p: { st: CardSt }) {
       </label>
       {sv.saveError != null && <p className="error">{sv.saveError}</p>}
       <RestartPanel st={p.st.restart} />
-    </div>
-  );
-});
-
-const StatusDot = obs(function StatusDot(p: { st: CardSt }) {
-  const s = p.st.library.status;
-  const cls =
-    s.error != null ? "bad" : p.st.library.inLibrary ? "good" : s.result != null ? "none" : "wait";
-  return <span className={`dot ${cls}`} />;
-});
-
-const Body = obs(function Body(p: { st: CardSt }) {
-  const st = p.st;
-  const model = st.page.model;
-  if (model.error != null) return <p className="error">Civitai: {model.error.message}</p>;
-  const m = model.result;
-  const v = st.page.version;
-  if (m == null || v == null) return <p className="muted">Loading model…</p>;
-  return (
-    <>
-      <div className="title" title={m.name}>
-        {m.name}
-      </div>
-      <VersionChip st={st} />
-      {st.page.prefix == null ? (
-        <p className="muted">Type {m.type} is not handled.</p>
-      ) : (
-        <>
-          <LibraryLine st={st} />
-          {!st.library.inLibrary && <Controls st={st} />}
-        </>
-      )}
-    </>
-  );
-});
-
-/** the version the card acts on: details on hover, every other version on click */
-const VersionChip = obs(function VersionChip(p: { st: CardSt }) {
-  const [open, setOpen] = useState(false);
-  const st = p.st;
-  const m = st.page.model.result;
-  const v = st.page.version;
-  if (m == null || v == null) return null;
-  const file = st.file.picked;
-  const tip = [
-    `Version: ${v.name}`,
-    `Base model: ${v.baseModel ?? "unknown"}`,
-    `Type: ${m.type}`,
-    `File: ${file != null ? st.file.label(file) : "none listed"}`,
-    m.versions.length > 1 ? `Click to pick another of ${m.versions.length} versions` : "",
-  ]
-    .filter((l) => l !== "")
-    .join("\n");
-  return (
-    <span className="vchip-wrap">
-      <button
-        className="vchip"
-        title={tip}
-        onClick={() => setOpen((o) => !o && m.versions.length > 1)}
-        onBlur={() => setOpen(false)}
-      >
-        {v.name}
-        {v.baseModel != null && <span className="vchip-base">{v.baseModel}</span>}
-        {m.versions.length > 1 && " ▾"}
-      </button>
-      {open && (
-        <ul className="combo-list vlist" role="listbox">
-          {m.versions.map((ver) => (
-            <li
-              key={ver.id}
-              role="option"
-              aria-selected={ver.id === v.id}
-              className={ver.id === v.id ? "hi" : undefined}
-              // mousedown: the button blur would close the list before a click lands
-              onMouseDown={(e) => {
-                e.preventDefault();
-                st.pickVersion(ver.id);
-                setOpen(false);
-              }}
-            >
-              {ver.name}
-              {ver.baseModel != null && <span className="muted"> · {ver.baseModel}</span>}
-              {st.library.localIds.includes(ver.id) && <span className="tag have-tag">✓ have</span>}
-              {st.library.newer?.id === ver.id && <span className="tag newer-tag">newer</span>}
-            </li>
-          ))}
-        </ul>
-      )}
-    </span>
-  );
-});
-
-const LibraryLine = obs(function LibraryLine(p: { st: CardSt }) {
-  const st = p.st;
-  const s = st.library.status;
-  if (s.error != null)
-    return (
-      <p className="error">
-        {s.error.message}
-        <button className="link" onClick={() => void st.refreshForVersion()}>
-          Retry
-        </button>
-      </p>
-    );
-  if (s.isRunning && s.result == null) return <p className="muted">Checking library…</p>;
-  if (s.result?.exists === true) {
-    const roots = st.folder.choices.result?.roots ?? [];
-    return (
-      <>
-        <p className="status lmf-cool" title={`LoRA Manager type: ${s.result.modelType}`}>
-          ✓ In library
-        </p>
-        <NewerChip st={st} />
-        {s.result.files.map((f) => (
-          <WhereLine key={f.filePath} path={f.filePath} roots={roots} />
-        ))}
-      </>
-    );
-  }
-  const have =
-    st.page.model.result?.versions.filter((v) => st.library.localIds.includes(v.id)) ?? [];
-  return (
-    <p className="muted">
-      Not in library
-      {have.length > 0 && (
-        <span className="have"> · you have {have.map((v) => v.name).join(", ")}</span>
-      )}
-    </p>
-  );
-});
-
-const NewerChip = obs(function NewerChip(p: { st: CardSt }) {
-  const n = p.st.library.newer;
-  if (n == null) return null;
-  return (
-    <button
-      className="newer lmf-hot"
-      onClick={() => p.st.pickVersion(n.id)}
-      title={`A newer ${n.baseModel ?? ""} version is on Civitai. Click to switch the card to it.`}
-    >
-      ⬆ NEWER: {n.name}
-    </button>
-  );
-});
-
-const Controls = obs(function Controls(p: { st: CardSt }) {
-  const st = p.st;
-  const d = st.download.state;
-  return (
-    <>
-      <FilePicker st={st} />
-      <FolderPicker st={st} />
-      {d.kind === "running" && (
-        <div className="progress">
-          <div className="bar" style={{ width: `${Math.max(2, Math.min(100, d.percent))}%` }} />
-          <span>{d.stage ?? `${Math.round(d.percent)}%`}</span>
-        </div>
-      )}
-      {d.kind === "failed" && <p className="error">{d.message}</p>}
-      <div className="actions">
-        <button
-          className="primary lmf-hot"
-          disabled={st.download.isBusy || st.folder.pick.root === ""}
-          onClick={() => void st.download.start()}
-        >
-          {d.kind === "starting" ? "Starting…" : d.kind === "running" ? "Downloading…" : "Download"}
-        </button>
-        <button disabled={st.download.isBusy} onClick={() => void st.marks.toggle()}>
-          {st.marks.isMarked ? "Unmark" : "Mark"}
-        </button>
-      </div>
-    </>
-  );
-});
-
-const FilePicker = obs(function FilePicker(p: { st: CardSt }) {
-  const f = p.st.file;
-  if (f.files.length < 2) return null;
-  return (
-    <div className="folder">
-      <label>
-        <span className="lbl">File</span>
-        <select value={f.picked?.id ?? ""} onChange={(e) => f.pick(Number(e.currentTarget.value))}>
-          {f.files.map((file) => (
-            <option key={file.id} value={file.id} title={file.name}>
-              {f.label(file)}
-              {file.primary ? " (default)" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
-});
-
-/** "loras › krea2/styles" then the file name: the root by its own folder name, then the path inside it */
-function WhereLine(p: { path: string; roots: string[] }) {
-  const w = whereInLibrary(p.path, p.roots);
-  return (
-    <p className="where" title={p.path}>
-      <span className="where-dir">
-        {w.rootName}
-        {w.dir !== "" && <> › {w.dir}</>}
-      </span>
-      <span className="where-file">{w.fileName}</span>
-      <button
-        className="link"
-        onClick={() => void navigator.clipboard.writeText(p.path)}
-        title="Copy the full path"
-      >
-        Copy
-      </button>
-    </p>
-  );
-}
-
-const FolderSource = obs(function FolderSource(p: { st: CardSt }) {
-  const f = p.st.folder;
-  if (f.source === "hand") return null;
-  return f.via != null ? (
-    <p className="rule" title={`→ ${f.via.sub}`}>
-      rule: {summarizeCond(f.via.cond)}
-    </p>
-  ) : (
-    <p className="rule none">no rule matches this model</p>
-  );
-});
-
-const FolderPicker = obs(function FolderPicker(p: { st: CardSt }) {
-  const f = p.st.folder;
-  const c = f.choices;
-  if (c.error != null) return <p className="error">Folders: {c.error.message}</p>;
-  const roots = c.result?.roots ?? [];
-  const labels = rootLabels(roots);
-  if (roots.length === 0)
-    return <p className="muted">{c.isRunning ? "Loading folders…" : "No model root configured"}</p>;
-  return (
-    <div className="folder">
-      <label>
-        <span className="lbl">Root</span>
-        <select
-          value={f.pick.root}
-          onChange={(e) => f.setRoot(e.currentTarget.value)}
-          title={f.pick.root}
-        >
-          {roots.map((r) => (
-            <option key={r} value={r} title={r}>
-              {labels.get(r) ?? r}
-            </option>
-          ))}
-        </select>
-      </label>
-      <span className="sep">/</span>
-      <label>
-        <span className="lbl">Subfolder</span>
-        <SubfolderBox
-          value={f.pick.sub}
-          folders={c.result?.folders ?? []}
-          onChange={(v) => f.setSub(v)}
-        />
-      </label>
-      <FolderSource st={p.st} />
     </div>
   );
 });

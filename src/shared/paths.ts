@@ -78,3 +78,11 @@ export function folderOptions(folders: string[], query: string, limit = 60): Fol
   for (const f of matches) rows.push({ value: f, depth: f.split("/").length - 1, isNew: false });
   return rows;
 }
+
+/** a typed subfolder as a relative forward slash path */
+export function normalizeSub(raw: string): string {
+  return raw
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/{2,}/g, "/");
+}

@@ -5,6 +5,13 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- The model page row is now the tile chips (one engine: chipsFor, rendered
+  by chipEl on tiles and ChipView in the row); the selects, Download/Mark
+  buttons, version chip and where line are gone. Clicking a chip's
+  [root] (subfolder) opens the TargetEditor (EditSvc: manual target and file
+  per version). LM down turns the row's chips into Mark chips. The bar is
+  left aligned so it stays put between pages.
+
 - Civitai category rules (character … action, `{base}/<category>`) seeded
   once at the end of the list (flag categoriesSeeded), and a + Categories
   button re-adds missing ones without duplicates.

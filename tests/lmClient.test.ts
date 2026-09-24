@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 
-import { normalizeSub } from "src/content/CardSt.ts";
+import { normalizeSub } from "src/shared/paths.ts";
 import { LmClient, normalizeBaseUrl } from "src/shared/lmClient.ts";
 
 type Call = { url: string; init?: RequestInit };
