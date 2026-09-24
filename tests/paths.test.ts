@@ -1,12 +1,6 @@
 import { expect, test } from "bun:test";
 
-import {
-  folderOptions,
-  locateInRoots,
-  rootLabels,
-  shortRoot,
-  whereInLibrary,
-} from "src/shared/paths.ts";
+import { folderOptions, locateInRoots, rootLabels, whereInLibrary } from "src/shared/paths.ts";
 
 test("a file is located under the longest matching root", () => {
   const roots = ["/m/loras", "/m/loras/extra"];
