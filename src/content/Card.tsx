@@ -84,7 +84,8 @@ const ModelChips = obs(function ModelChips(p: { st: CardSt }) {
     <span className="row-chips" onPointerLeave={() => st.listing.hideTip()}>
       {chips.map((c, i) => (
         <ChipView
-          key={`${i}:${c.text}`}
+          // by position, not text: a progress tick must not replace the element the tooltip is anchored to
+          key={i}
           chip={c}
           onAct={() => c.act != null && void st.listing.run(m.id, c.act)}
           onEdit={(rect) =>
@@ -107,21 +108,13 @@ function ChipView(p: {
 }) {
   const c = p.chip;
   return (
-    <span
-      className={`lmf-chip ${c.cls}`}
-      role={c.act != null ? "button" : undefined}
-      data-act={c.act != null ? "1" : undefined}
-      onClick={p.onAct}
-      onPointerEnter={(e) => p.onHover(e.currentTarget)}
-    >
-      {c.text}
+    <span className={`lmf-chip ${c.cls}`} onPointerEnter={(e) => p.onHover(e.currentTarget)}>
+      {c.text !== "" && <span className="lmf-label">{c.text}</span>}
       {c.target != null && (
         <span
           className="lmf-target"
-          data-edit="1"
           title="Change where this one goes"
           onClick={(e) => {
-            e.stopPropagation();
             const r = e.currentTarget.getBoundingClientRect();
             p.onEdit({ left: r.left, top: r.top, bottom: r.bottom });
           }}
@@ -132,6 +125,11 @@ function ChipView(p: {
             {c.target.sub !== "" ? c.target.sub : "(root)"}
           </span>
         </span>
+      )}
+      {c.act != null && (
+        <button className="lmf-get" onClick={p.onAct}>
+          {c.actLabel ?? "Get"}
+        </button>
       )}
     </span>
   );

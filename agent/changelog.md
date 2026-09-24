@@ -5,6 +5,12 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Chips: 26px like the Rules and Focus buttons, one real [Get] / [Update] /
+  [Retry] / [Mark] button as the only thing that acts, no blinking dot (it
+  read as recording). The tooltip holds a live getter instead of a snapshot
+  and re-renders after each listing pass and when paths arrive: it stayed
+  on "locating…" until re-hovered.
+
 - The model page row is now the tile chips (one engine: chipsFor, rendered
   by chipEl on tiles and ChipView in the row); the selects, Download/Mark
   buttons, version chip and where line are gone. Clicking a chip's

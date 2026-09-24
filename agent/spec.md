@@ -177,9 +177,13 @@ ids. LM unreachable → no chips, retried every 30 s. The chips swallow the
 click, so civitai's card never navigates.
 
 Chips are **glass**: a see through dark body with thin white text so the
-illustration stays visible, the state in a small dot at the start
-(pulsing red: install or newer; green: have; orange: installing; solid red:
-failed). Hovering a clickable chip makes it opaque.
+illustration stays visible, 26px tall like the Rules and Focus buttons. The
+only thing that acts is a real button at the end of the chip: **[Get]**
+(install), **[Update]** (newer version), **[Retry]** (failed), **[Mark]** /
+**[Unmark]** (LoRA Manager down); the `[root] (subfolder)` tags open the
+target editor; the rest of the chip does nothing. Nothing blinks: a static
+dot says green = have, orange = downloading, red = failed; install chips
+have no dot, their button says it.
 
 Hovering a chip shows a styled tooltip at once: each local version as
 `v1.0 · Krea 2` with where its files are (`loras › krea2/styles / file`,

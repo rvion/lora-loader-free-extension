@@ -57,7 +57,7 @@ test("ids are sent in chunks", () => {
 test("no chip before LM answers; stand ins before civitai answers", () => {
   expect(chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target })).toEqual([]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target })).toEqual([
-    { cls: "lmf-hot", text: "⬇ Install", act: { kind: "install", versionId: null } },
+    { cls: "lmf-hot", text: "", act: { kind: "install", versionId: null }, actLabel: "Get" },
   ]);
   expect(chipsFor({ presence: have(10, 11), remote: null, jobs: noJobs, target })[0]?.text).toBe(
     "✓ LM ×2",
@@ -68,8 +68,8 @@ test("one chip per base model says exactly which one you have", () => {
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target });
   expect(chips.map((c) => [c.text, c.act?.versionId ?? "-", c.target?.sub ?? "-"])).toEqual([
     ["✓ Krea 2", "-", "-"],
-    ["⬇ Anima", 11, "anima/styles"],
-    ["⬇ Illustrious", 12, "illustrious/styles"],
+    ["Anima", 11, "anima/styles"],
+    ["Illustrious", 12, "illustrious/styles"],
   ]);
 });
 
@@ -78,8 +78,9 @@ test("a later version of a base you have is flagged newer and installs that one"
   expect(chipsFor({ presence: have(20), remote: m, jobs: noJobs, target })).toEqual([
     {
       cls: "lmf-hot",
-      text: "⬆ NEWER Krea 2",
+      text: "Krea 2 · newer v21",
       act: { kind: "install", versionId: 21 },
+      actLabel: "Update",
       target: { root: "/m/loras", rootLabel: "loras", sub: "krea 2/styles" },
       editVersion: 21,
     },
@@ -90,7 +91,7 @@ test("jobs show on their base chip; past four bases a +N chip", () => {
   const jobs = new Map<number, DownloadState>([
     [11, { kind: "running", percent: 41.6, stage: null }],
   ]);
-  expect(chipsFor({ presence: null, remote: kai, jobs, target })[1]?.text).toBe("⬇ Anima 42%");
+  expect(chipsFor({ presence: null, remote: kai, jobs, target })[1]?.text).toBe("Anima 42%");
   const many = model(...["A", "B", "C", "D", "E", "F"].map((b, i) => ver(30 + i, b, "2026-09-01")));
   const chips = chipsFor({ presence: null, remote: many, jobs: noJobs, target });
   expect(chips).toHaveLength(5);
@@ -150,7 +151,7 @@ test("page stats: matches of the draft, and the tags and bases seen, most freque
 test("focus hides install chips of other bases, never what you have", () => {
   const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target, focus });
-  expect(chips.map((c) => c.text)).toEqual(["✓ Krea 2", "⬇ Illustrious"]);
+  expect(chips.map((c) => c.text)).toEqual(["✓ Krea 2", "Illustrious"]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target, focus })).toEqual([]);
 });
 
@@ -163,10 +164,10 @@ test("lm down on a model page: every base becomes a mark chip, marked ones unmar
     mode: "mark",
     isMarked: (v) => v === 11,
   });
-  expect(chips.map((c) => [c.text, c.act?.kind])).toEqual([
-    ["☆ Mark Krea 2", "mark"],
-    ["★ Marked Anima", "unmark"],
-    ["☆ Mark Illustrious", "mark"],
+  expect(chips.map((c) => [c.text, c.actLabel])).toEqual([
+    ["Krea 2", "Mark"],
+    ["★ Anima", "Unmark"],
+    ["Illustrious", "Mark"],
   ]);
 });
 

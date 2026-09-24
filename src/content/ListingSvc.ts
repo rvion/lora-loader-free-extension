@@ -49,8 +49,9 @@ export type ChipAct = { kind: "install" | "mark" | "unmark"; versionId: number |
 export type Chip = {
   cls: "lmf-cool" | "lmf-hot" | "lmf-danger" | "lmf-hot lmf-busy" | "lmf-more";
   text: string;
-  /** what a click on the chip body does; absent = not clickable */
+  /** the chip's one button: what it does and what it says; absent = no button */
   act?: ChipAct;
+  actLabel?: string;
   /** where it would land; a click on it opens the target editor for that version */
   target?: Target;
   editVersion?: number;
@@ -155,7 +156,7 @@ export class ListingSvc {
   }
 
   showTip(anchor: HTMLElement, modelId: number): void {
-    this.tip.show(anchor, this.tipInput(modelId));
+    this.tip.show(anchor, modelId, () => this.tipInput(modelId));
   }
 
   hideTip(): void {
@@ -249,6 +250,7 @@ export class ListingSvc {
   /** idempotent: rebuilds a card's chips only when their content changed, so it never feeds the observer a loop */
   private render(): void {
     const cards = modelCards();
+    this.tip.refresh();
     this.deps.onStats(
       pageStats(
         cards.map((c) => this.remote.get(c.modelId) ?? null),
@@ -300,7 +302,9 @@ export class ListingSvc {
       if (chip?.dataset.act == null) return;
       void this.run(modelId, parseAct(chip.dataset.act));
     });
-    box.addEventListener("pointerenter", () => this.tip.show(box, this.tipInput(modelId)));
+    box.addEventListener("pointerenter", () =>
+      this.tip.show(box, modelId, () => this.tipInput(modelId)),
+    );
     box.addEventListener("pointerleave", () => this.tip.hide());
     card.appendChild(box);
     return box;
@@ -513,8 +517,9 @@ export function chipsFor(p: ChipInput): Chip[] {
         const marked = p.isMarked?.(id) === true;
         return {
           cls: marked ? "lmf-cool" : "lmf-hot",
-          text: `${marked ? "★ Marked" : "☆ Mark"} ${baseName(g)}`,
+          text: `${marked ? "★ " : ""}${baseName(g)}`,
           act: { kind: marked ? "unmark" : "mark", versionId: id },
+          actLabel: marked ? "Unmark" : "Mark",
           ...(t != null ? { target: t, editVersion: id } : {}),
         };
       });
@@ -527,7 +532,14 @@ export function chipsFor(p: ChipInput): Chip[] {
     if (p.presence == null)
       return focus != null
         ? []
-        : [{ cls: "lmf-hot", text: "⬇ Install", act: { kind: "install", versionId: null } }];
+        : [
+            {
+              cls: "lmf-hot",
+              text: "",
+              act: { kind: "install", versionId: null },
+              actLabel: "Get",
+            },
+          ];
     const n = p.presence.versions.length;
     return [{ cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" }];
   }
@@ -548,16 +560,20 @@ export function chipsFor(p: ChipInput): Chip[] {
     const job = p.jobs.get(id);
     if (job != null && job.kind !== "idle" && job.kind !== "done") {
       if (job.kind === "failed")
-        return { cls: "lmf-danger", text: `✕ ${name} failed`, act: install };
+        return { cls: "lmf-danger", text: `${name} failed`, act: install, actLabel: "Retry" };
       const progress = job.kind === "starting" ? "…" : (job.stage ?? `${Math.round(job.percent)}%`);
-      return { cls: "lmf-hot lmf-busy", text: `⬇ ${name} ${progress}` };
+      return { cls: "lmf-hot lmf-busy", text: `${name} ${progress}` };
     }
     if (g.have != null && !hasNewer(g)) return { cls: "lmf-cool", text: `✓ ${name}` };
     const t = p.target(g.latest);
-    const text = hasNewer(g) ? `⬆ NEWER ${name}` : `⬇ ${name}`;
-    return t != null
-      ? { cls: "lmf-hot", text, act: install, target: t, editVersion: id }
-      : { cls: "lmf-hot", text, act: install };
+    const newer = hasNewer(g);
+    const chip: Chip = {
+      cls: "lmf-hot",
+      text: newer ? `${name} · newer ${g.latest.name}` : name,
+      act: install,
+      actLabel: newer ? "Update" : "Get",
+    };
+    return t != null ? { ...chip, target: t, editVersion: id } : chip;
   });
   if (groups.length > max) chips.push({ cls: "lmf-more", text: `+${groups.length - max}` });
   return chips;
@@ -576,11 +592,12 @@ export function parseAct(raw: string): ChipAct {
 function chipEl(c: Chip): HTMLElement {
   const el = document.createElement("span");
   el.className = `lmf-chip ${c.cls}`;
-  if (c.act != null) {
-    el.dataset.act = actKey(c.act);
-    el.setAttribute("role", "button");
+  if (c.text !== "") {
+    const label = document.createElement("span");
+    label.className = "lmf-label";
+    label.textContent = c.text;
+    el.append(label);
   }
-  el.append(c.text);
   if (c.target != null) {
     const target = document.createElement("span");
     target.className = "lmf-target";
@@ -594,6 +611,14 @@ function chipEl(c: Chip): HTMLElement {
     sub.textContent = `${c.target.manual === true ? "✎ " : ""}${c.target.sub !== "" ? c.target.sub : "(root)"}`;
     target.append(root, sub);
     el.append(target);
+  }
+  if (c.act != null) {
+    const b = document.createElement("span");
+    b.className = "lmf-get";
+    b.setAttribute("role", "button");
+    b.dataset.act = actKey(c.act);
+    b.textContent = c.actLabel ?? "Get";
+    el.append(b);
   }
   return el;
 }
@@ -628,14 +653,28 @@ class Tip {
     this.roots.clear();
   }
 
-  show(anchor: HTMLElement, p: TipInput): void {
+  /** a live getter, not a snapshot: the tip follows downloads and path loads while it is open */
+  private current: { modelId: number; get: () => TipInput } | null = null;
+
+  show(anchor: HTMLElement, modelId: number, get: () => TipInput): void {
     this.anchor = anchor;
-    this.render(p);
+    this.current = { modelId, get };
+    this.refresh();
+  }
+
+  /** re-render from fresh data; after every listing pass and when paths arrive */
+  refresh(): void {
+    const cur = this.current;
+    if (this.anchor == null || cur == null) return;
+    if (!this.anchor.isConnected) return this.hide();
+    const p = cur.get();
     if (p.presence != null && !this.paths.has(p.modelId)) void this.loadPaths(p);
+    this.render(p);
   }
 
   hide(): void {
     this.anchor = null;
+    this.current = null;
     this.el?.remove();
   }
 
@@ -670,7 +709,7 @@ class Tip {
       this.paths.delete(p.modelId);
       console.warn("[lm-free] tooltip paths:", errorMessage(e));
     }
-    if (this.anchor?.getAttribute(CHIPS_ATTR) === String(p.modelId)) this.render(p);
+    if (this.current?.modelId === p.modelId) this.refresh();
   }
 
   private render(p: TipInput): void {
