@@ -235,7 +235,7 @@ export class ListingSvc {
       presence: this.known.has(modelId) ? (this.known.get(modelId) ?? null) : undefined,
       remote: m,
       jobs: this.jobs,
-      focus: modelPage ? null : this.deps.focus(),
+      focus: this.deps.focus(),
       max: modelPage ? Infinity : MAX_BASE_CHIPS,
       mode: modelPage && this.lmDown ? "mark" : "install",
       isMarked: (vid) => this.marked.has(vid),
@@ -527,26 +527,33 @@ const baseName = (g: BaseGroup) => g.base ?? "other";
 /** agent/spec.md "listing cards": one chip per base model, or a stand in until civitai's data is in */
 export function chipsFor(p: ChipInput): Chip[] {
   const max = p.max ?? MAX_BASE_CHIPS;
+  const focus = p.focus ?? null;
   if (p.mode === "mark") {
     if (p.remote == null) return [];
-    return baseGroups(p.remote.versions, [])
-      .slice(0, max)
-      .map((g): Chip => {
-        const id = g.latest.id;
-        const t = p.target(g.latest);
-        const marked = p.isMarked?.(id) === true;
-        return {
-          cls: marked ? "lmf-cool" : "lmf-hot",
-          text: marked ? "★ marked" : "",
-          act: { kind: marked ? "unmark" : "mark", versionId: id },
-          actLabel: `${marked ? "Unmark" : "Mark"} ${baseName(g)}`,
-          ...(t != null ? { target: t, editVersion: id } : {}),
-        };
-      });
+    const facts = factsOf(p.remote);
+    const all = baseGroups(p.remote.versions, []);
+    const shown = all.filter(
+      (g) =>
+        focus == null ||
+        p.isMarked?.(g.latest.id) === true ||
+        matchRule(focus, facts, g.latest.baseModel),
+    );
+    const chips = shown.slice(0, max).map((g): Chip => {
+      const id = g.latest.id;
+      const t = p.target(g.latest);
+      const marked = p.isMarked?.(id) === true;
+      return {
+        cls: marked ? "lmf-cool" : "lmf-hot",
+        text: marked ? "★ marked" : "",
+        act: { kind: marked ? "unmark" : "mark", versionId: id },
+        actLabel: `${marked ? "Unmark" : "Mark"} ${baseName(g)}`,
+        ...(t != null ? { target: t, editVersion: id } : {}),
+      };
+    });
+    return withTail(chips, shown.length, all.length, max);
   }
   if (p.presence === undefined) return [];
   const localIds = p.presence?.versions.map((v) => v.versionId) ?? [];
-  const focus = p.focus ?? null;
   if (p.remote == null) {
     // under focus an unknown model gets no install chip: its base model is not known yet
     if (p.presence == null)
@@ -595,8 +602,15 @@ export function chipsFor(p: ChipInput): Chip[] {
     };
     return t != null ? { ...chip, target: t, editVersion: id } : chip;
   });
-  if (groups.length > max) chips.push({ cls: "lmf-more", text: `+${groups.length - max}` });
-  return chips;
+  return withTail(chips, groups.length, all.length, max);
+}
+
+/** the grey tail chips: overflow past max, then what focus hid (agent/spec.md "focus") */
+function withTail(chips: Chip[], shown: number, total: number, max: number): Chip[] {
+  const out = [...chips];
+  if (shown > max) out.push({ cls: "lmf-more", text: `+${shown - max}` });
+  if (total > shown) out.push({ cls: "lmf-more", text: `+${total - shown} unfocused` });
+  return out;
 }
 
 export function actKey(a: ChipAct): string {

@@ -5,6 +5,10 @@ session that arrives with no context.
 
 ## 2026-09-24
 
+- Focus now applies to the model page's image chips too (and to mark
+  chips); what it hid is counted in a last grey "+N unfocused" chip, on
+  tiles and the image alike (withTail).
+
 - Model page chips moved onto the first showcase image (renderHero), like a
   tile; the model page card and its host are deleted, the bar is the one
   host and is identical everywhere (⚙ moved into it). Gate note: shipkit ci

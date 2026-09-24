@@ -153,7 +153,11 @@ test("page stats: matches of the draft, and the tags and bases seen, most freque
 test("focus hides install chips of other bases, never what you have", () => {
   const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
   const chips = chipsFor({ presence: have(10), remote: kai, jobs: noJobs, target, focus });
-  expect(chips.map((c) => c.actLabel ?? c.text)).toEqual(["✓ Krea 2", "Get Illustrious"]);
+  expect(chips.map((c) => c.actLabel ?? c.text)).toEqual([
+    "✓ Krea 2",
+    "Get Illustrious",
+    "+1 unfocused",
+  ]);
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target, focus })).toEqual([]);
 });
 
@@ -192,4 +196,31 @@ test("a manual target is carried by the chip", () => {
     sub: "mine",
     manual: true,
   });
+});
+
+test("what focus hides is counted in a last grey chip, tiles and model page alike", () => {
+  const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
+  expect(
+    chipsFor({ presence: null, remote: kai, jobs: noJobs, target, focus }).map(
+      (c) => c.actLabel ?? c.text,
+    ),
+  ).toEqual(["Get Illustrious", "+2 unfocused"]);
+  const onModelPage = chipsFor({
+    presence: null,
+    remote: kai,
+    jobs: noJobs,
+    target,
+    focus,
+    max: Infinity,
+  });
+  expect(onModelPage.at(-1)).toEqual({ cls: "lmf-more", text: "+2 unfocused" });
+  const marking = chipsFor({
+    presence: undefined,
+    remote: kai,
+    jobs: noJobs,
+    target,
+    focus,
+    mode: "mark",
+  });
+  expect(marking.map((c) => c.actLabel ?? c.text)).toEqual(["Mark Illustrious", "+2 unfocused"]);
 });

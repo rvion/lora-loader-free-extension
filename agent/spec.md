@@ -4,8 +4,8 @@
 
 The bar is the same as on every other page (see "rules strip"). The model's
 chips sit **on its first showcase image**, top left, exactly like a tile's
-chips: one per base model, every base (not filtered by focus: you opened
-this model on purpose), same buttons, same path, same editor, same tooltip.
+chips: one per base model, filtered by focus like a tile, same buttons, same
+path, same editor, same tooltip, and every base (no `+N` overflow).
 The showcase image is the first `image.civitai.com` image or video in the
 page that is at least 200×150 on screen and is neither inside a link to a
 model (those are suggestion tiles, which get their own chips) nor inside
@@ -57,11 +57,11 @@ OR), plus an on/off switch, saved.
   as toggles: quick picks from this page's cards (base models, tags, most
   frequent first) plus the values already in the focus, and a text box to
   add one. The button reads `Focus: off`, or `Focus: Illustrious, LoRA`.
-- While focus is on and has at least one value, a listing card's `⬇`
-  install chip only shows for base models (versions) that match it. `✓` and
-  `⬆ NEWER` chips of models you have always show. The tooltip still lists
-  every base.
-- The model page card is not filtered: you opened that model on purpose.
+- While focus is on and has at least one value, install chips (tiles and
+  the model page's image alike) only show for base models (versions) that
+  match it. `✓` and newer chips of models you have always show. What focus
+  hid is counted in a last, grey, non clickable chip: `+2 unfocused`. The
+  tooltip still lists every base.
 
 ## Dock and free mode (card and tag bar)
 
