@@ -1,21 +1,20 @@
 import { expect, test } from "bun:test";
 
-import { nextBuildVersion } from "scripts/buildVersion.ts";
+import { nextBuildVersion, withVersion } from "scripts/buildVersion.ts";
 
-// why we think it is actually a bug, and not just meaning spec should change: agent/architecture.md says every build gets a new version, and two builds that both read 1.0.0 cannot be told apart in chrome://extensions
-test("each build increments the previous build number", () => {
-  expect(nextBuildVersion("1.0.0", "1.0.0.6")).toBe("1.0.0.7");
+// why we think it is actually a bug, and not just meaning spec should change: agent/architecture.md says a build bumps the patch, three numbers, never a fourth
+test("each build bumps the patch", () => {
+  expect(nextBuildVersion("2.21.1")).toBe("2.21.2");
+  expect(nextBuildVersion("2.21.9")).toBe("2.21.10");
 });
 
-test("a first build, or a dist from before build numbers, starts at 1", () => {
-  expect(nextBuildVersion("1.0.0", null)).toBe("1.0.0.1");
-  expect(nextBuildVersion("1.0.0", "1.0.0")).toBe("1.0.0.1");
+test("a version that is not three numbers is refused loudly", () => {
+  expect(() => nextBuildVersion("1.0.0.3")).toThrow(/three numbers/);
 });
 
-test("a package.json bump restarts the build number", () => {
-  expect(nextBuildVersion("1.1.0", "1.0.0.42")).toBe("1.1.0.1");
-});
-
-test("chrome's per number limit is refused loudly", () => {
-  expect(() => nextBuildVersion("1.0.0", "1.0.0.65535")).toThrow(/65535/);
+test("package.json is rewritten on the version line only, its layout kept", () => {
+  const raw = '{\n    "name": "x",\n    "version": "2.21.1",\n    "private": true\n}\n';
+  expect(withVersion(raw, "2.21.2")).toBe(
+    '{\n    "name": "x",\n    "version": "2.21.2",\n    "private": true\n}\n',
+  );
 });

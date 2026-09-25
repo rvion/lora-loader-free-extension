@@ -13,9 +13,10 @@ session that arrives with no context.
   empty until the page was reloaded; it now retries after 10 s, and the
   LM backoff retries on its own too.
 
-- Every build now gets a new version, `<package.json version>.<build>`
-  (scripts/buildVersion.ts). The build number comes from the previous
-  dist/manifest.json, so chrome://extensions shows which build is loaded.
+- Every successful build bumps the patch in package.json and writes it
+  into dist/manifest.json (scripts/buildVersion.ts), so chrome://extensions
+  shows which build is loaded. Three numbers, never a fourth. The version
+  jumped from 1.0.0 to 2.21.1 by hand first.
 
 - Chips took ~50 s to show when the LoRA Manager box was off on the
   network: its TCP connect hangs rather than refusing, and the listing
