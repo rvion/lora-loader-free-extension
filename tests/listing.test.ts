@@ -4,10 +4,12 @@ import {
   actKey,
   chipsFor,
   chunk,
+  nextPassDelay,
   pageStats,
   parseAct,
   tipLines,
   unknownIds,
+  type Chip,
   type Target,
 } from "src/content/ListingSvc.ts";
 import type { CivitaiModel, CivitaiVersion } from "src/shared/civitai.ts";
@@ -54,8 +56,30 @@ test("ids are sent in chunks", () => {
   expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
 });
 
-test("no chip before LM answers; stand ins before civitai answers", () => {
-  expect(chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target })).toEqual([]);
+const WAIT: Chip = { cls: "lmf-more lmf-wait", text: "", spin: true };
+
+// why we think it is actually a bug, and not just meaning spec should change: agent/spec.md "listing cards" says a card is never bare while data is on its way
+test("a spinner pill while LM or civitai is still answering", () => {
+  expect(chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target })).toEqual([WAIT]);
+  expect(chipsFor({ presence: undefined, remote: undefined, jobs: noJobs, target })).toEqual([
+    WAIT,
+  ]);
+  const focus = { tags: [], words: [], bases: ["Illustrious"], types: [] };
+  expect(chipsFor({ presence: null, remote: undefined, jobs: noJobs, target, focus })).toEqual([
+    WAIT,
+  ]);
+  expect(
+    chipsFor({ presence: undefined, remote: undefined, jobs: noJobs, target, mode: "mark" }),
+  ).toEqual([WAIT]);
+});
+
+test("LM unreachable: an offline pill carrying the error, never a spinner", () => {
+  expect(
+    chipsFor({ presence: undefined, remote: kai, jobs: noJobs, target, lmError: "timed out" }),
+  ).toEqual([{ cls: "lmf-more lmf-off", text: "LM offline", title: "timed out" }]);
+});
+
+test("no spinner once the data is in; stand ins before civitai answers", () => {
   expect(chipsFor({ presence: null, remote: null, jobs: noJobs, target })).toEqual([
     { cls: "lmf-hot", text: "", act: { kind: "install", versionId: null }, actLabel: "Get" },
   ]);
@@ -223,4 +247,17 @@ test("what focus hides is counted in a last grey chip, tiles and model page alik
     mode: "mark",
   });
   expect(marking.map((c) => c.actLabel ?? c.text)).toEqual(["Mark Illustrious", "+2 unfocused"]);
+});
+
+// why we think it is actually a bug, and not just meaning spec should change: agent/spec.md says the first pass after a quiet page runs at once, and a fixed 300 ms debounce delays every first paint
+test("the first pass after a quiet page runs at once, a burst waits out the debounce", () => {
+  expect(nextPassDelay(0, 10_000)).toBe(0);
+  expect(nextPassDelay(10_000, 10_100)).toBe(200);
+});
+
+test("the tooltip says what a pending or offline card is waiting on", () => {
+  const base = { modelId: 1, presence: null, groups: [], jobs: noJobs, target };
+  expect(tipLines({ ...base, pending: "Waiting for LoRA Manager…" }, undefined)).toEqual([
+    { text: "Waiting for LoRA Manager…", cls: "muted" },
+  ]);
 });

@@ -47,7 +47,12 @@ export const CHIP_CSS = `
 .lmf-chip.lmf-cool::before { background: #51cf66; }
 .lmf-chip.lmf-busy::before { background: #ff9100; }
 .lmf-chip.lmf-danger::before { background: #ff1744; }
-.lmf-chip.lmf-busy { cursor: progress; }
+.lmf-chip.lmf-busy, .lmf-chip.lmf-wait { cursor: progress; }
+.lmf-chip.lmf-wait { width: 26px; padding: 0; justify-content: center; }
+.lmf-spin { flex: none; width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; animation: lmf-spin .8s linear infinite; }
+@keyframes lmf-spin { to { transform: rotate(360deg); } }
+.lmf-chip.lmf-off { color: rgba(255,255,255,.7) !important; cursor: help; }
 .lmf-label { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* the one thing that acts */
 .lmf-get { flex: none; height: 20px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(255,255,255,.85);

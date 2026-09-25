@@ -5,6 +5,14 @@ session that arrives with no context.
 
 ## 2026-09-25
 
+- Cards are never bare while data is on its way: a spinner pill while LM
+  or civitai is answering, a grey `LM offline` pill (error on hover) when
+  LM is unreachable, which used to leave the card empty. The first pass
+  after a quiet page runs at once (nextPassDelay), instead of a fixed
+  300 ms debounce. A failed civitai details call used to leave its models
+  empty until the page was reloaded; it now retries after 10 s, and the
+  LM backoff retries on its own too.
+
 - Every build now gets a new version, `<package.json version>.<build>`
   (scripts/buildVersion.ts). The build number comes from the previous
   dist/manifest.json, so chrome://extensions shows which build is loaded.

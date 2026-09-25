@@ -40,6 +40,8 @@ const DEBOUNCE_MS = 300;
 const CHUNK = 100;
 /** civitai mutates its dom constantly: without this, an unreachable LM gets a call every pass */
 const DOWN_BACKOFF_MS = 30_000;
+/** civitai rate limits bursts: a failed details call waits this long before the next try */
+const CIVITAI_BACKOFF_MS = 10_000;
 const MAX_BASE_CHIPS = 4;
 
 export type Target = { root: string; rootLabel: string; sub: string; manual?: boolean };
@@ -47,8 +49,18 @@ export type Target = { root: string; rootLabel: string; sub: string; manual?: bo
 export type ChipAct = { kind: "install" | "mark" | "unmark"; versionId: number | null };
 
 export type Chip = {
-  cls: "lmf-cool" | "lmf-hot" | "lmf-danger" | "lmf-hot lmf-busy" | "lmf-more";
+  cls:
+    | "lmf-cool"
+    | "lmf-hot"
+    | "lmf-danger"
+    | "lmf-hot lmf-busy"
+    | "lmf-more"
+    | "lmf-more lmf-wait"
+    | "lmf-more lmf-off";
   text: string;
+  /** a small spinner before the text: data still on its way */
+  spin?: true;
+  title?: string;
   /** the chip's one button: what it does and what it says; absent = no button */
   act?: ChipAct;
   actLabel?: string;
@@ -80,20 +92,23 @@ export type ListingDeps = {
 export class ListingSvc {
   /** null = checked and absent */
   private known = new Map<number, Presence | null>();
-  /** civitai's view of each model on screen. null = civitai did not answer */
+  /** civitai's view of each model on screen. null = civitai answered without it; absent = not in yet */
   private remote = new Map<number, CivitaiModel | null>();
+  private remoteInflight = new Set<number>();
+  private remoteRetryAfter = 0;
   /** install jobs by version id */
   private jobs = new Map<number, DownloadState>();
   private inflight = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private lastPassAt = 0;
   private retryAfter = 0;
   private observer: MutationObserver;
   private tip = new Tip();
   private ctx: FolderCtx;
   /** the model page's own model: fetched and watched even though it is not a tile */
   private watched: number | null = null;
-  /** the last library call failed: chips of the watched model turn into mark chips */
-  private lmDown = false;
+  /** the last library call's error, null when it answered: tiles show it, the watched model turns into mark chips */
+  private lmError: string | null = null;
   private marked = new Set<number>();
   /** bumped after every pass: the model page row (react) reads it to re-render */
   rev = 0;
@@ -142,7 +157,7 @@ export class ListingSvc {
 
   get isLmDown(): boolean {
     void this.rev;
-    return this.lmDown;
+    return this.lmError != null;
   }
 
   targetOf(modelId: number, versionId: number): Target | null {
@@ -177,15 +192,20 @@ export class ListingSvc {
     this.tip.forgetAll();
     this.ctx.forgetRoots();
     this.retryAfter = 0;
+    this.remoteRetryAfter = 0;
     this.schedule();
   }
 
-  private schedule(): void {
+  private schedule(delay?: number): void {
     if (this.timer != null) return;
-    this.timer = setTimeout(() => {
-      this.timer = null;
-      void this.pass();
-    }, DEBOUNCE_MS);
+    this.timer = setTimeout(
+      () => {
+        this.timer = null;
+        this.lastPassAt = Date.now();
+        void this.pass();
+      },
+      delay ?? nextPassDelay(this.lastPassAt, Date.now()),
+    );
   }
 
   private async pass(): Promise<void> {
@@ -193,7 +213,10 @@ export class ListingSvc {
     if (this.watched != null)
       onScreen.push({ el: document.createElement("a"), modelId: this.watched });
     const missing = unknownIds(onScreen, this.known, this.inflight);
-    const noRemote = unknownIds(onScreen, this.remote, new Set());
+    const noRemote =
+      Date.now() >= this.remoteRetryAfter
+        ? unknownIds(onScreen, this.remote, this.remoteInflight)
+        : [];
     // parallel, each renders as it lands: a slow LM never holds back civitai's data
     const lm =
       missing.length > 0 && Date.now() >= this.retryAfter
@@ -212,35 +235,41 @@ export class ListingSvc {
     try {
       const found = await send({ kind: "libraryBatch", modelIds: ids });
       for (const id of ids) this.known.set(id, found[String(id)] ?? null);
-      this.lmDown = false;
+      this.lmError = null;
     } catch (e) {
-      this.lmDown = true;
+      this.lmError = errorMessage(e);
       this.retryAfter = Date.now() + DOWN_BACKOFF_MS;
-      console.warn("[lm-free] listing chips paused 30 s:", errorMessage(e));
+      setTimeout(() => this.schedule(0), DOWN_BACKOFF_MS);
+      console.warn("[lm-free] listing chips paused 30 s:", this.lmError);
     } finally {
       for (const id of ids) this.inflight.delete(id);
     }
   }
 
   private async fetchRemote(ids: number[]): Promise<void> {
-    for (const id of ids) this.remote.set(id, null);
+    for (const id of ids) this.remoteInflight.add(id);
     try {
       const models = await fetchCivitaiModels(location.origin, ids);
-      for (const [id, m] of models) this.remote.set(id, m);
+      for (const id of ids) this.remote.set(id, models.get(id) ?? null);
     } catch (e) {
-      console.warn("[lm-free] civitai details skipped:", errorMessage(e));
+      this.remoteRetryAfter = Date.now() + CIVITAI_BACKOFF_MS;
+      setTimeout(() => this.schedule(0), CIVITAI_BACKOFF_MS);
+      console.warn("[lm-free] civitai details retried in 10 s:", errorMessage(e));
+    } finally {
+      for (const id of ids) this.remoteInflight.delete(id);
     }
   }
 
   private chipsOf(modelId: number, modelPage = false): Chip[] {
-    const m = this.remote.get(modelId) ?? null;
+    const m = this.remote.get(modelId);
     return chipsFor({
       presence: this.known.has(modelId) ? (this.known.get(modelId) ?? null) : undefined,
       remote: m,
+      lmError: this.inflight.has(modelId) ? null : this.lmError,
       jobs: this.jobs,
       focus: this.deps.focus(),
       max: modelPage ? Infinity : MAX_BASE_CHIPS,
-      mode: modelPage && this.lmDown ? "mark" : "install",
+      mode: modelPage && this.lmError != null ? "mark" : "install",
       isMarked: (vid) => this.marked.has(vid),
       target: (v) => (m == null ? null : this.ctx.target(m, v)),
     });
@@ -336,9 +365,15 @@ export class ListingSvc {
   private tipInput(modelId: number): TipInput {
     const m = this.remote.get(modelId) ?? null;
     const presence = this.known.get(modelId) ?? null;
+    const pending = this.known.has(modelId)
+      ? null
+      : this.lmError != null && !this.inflight.has(modelId)
+        ? `LoRA Manager unreachable: ${this.lmError}`
+        : "Waiting for LoRA Manager…";
     return {
       modelId,
       presence,
+      ...(pending != null ? { pending } : {}),
       groups:
         m == null ? [] : baseGroups(m.versions, presence?.versions.map((v) => v.versionId) ?? []),
       jobs: this.jobs,
@@ -513,7 +548,10 @@ class FolderCtx {
 export type ChipInput = {
   /** undefined: LM has not answered yet */
   presence: Presence | null | undefined;
-  remote: CivitaiModel | null;
+  /** undefined: civitai has not answered yet; null: it answered without this model */
+  remote: CivitaiModel | null | undefined;
+  /** LM unreachable, and this card has no answer from it */
+  lmError?: string | null;
   jobs: ReadonlyMap<number, DownloadState>;
   /** focus in force: install chips only for matching versions */
   focus?: RuleCond | null;
@@ -528,10 +566,13 @@ export type ChipInput = {
 const baseName = (g: BaseGroup) => g.base ?? "other";
 
 /** agent/spec.md "listing cards": one chip per base model, or a stand in until civitai's data is in */
+const WAIT: Chip = { cls: "lmf-more lmf-wait", text: "", spin: true };
+
 export function chipsFor(p: ChipInput): Chip[] {
   const max = p.max ?? MAX_BASE_CHIPS;
   const focus = p.focus ?? null;
   if (p.mode === "mark") {
+    if (p.remote === undefined) return [WAIT];
     if (p.remote == null) return [];
     const facts = factsOf(p.remote);
     const all = baseGroups(p.remote.versions, []);
@@ -555,8 +596,12 @@ export function chipsFor(p: ChipInput): Chip[] {
     });
     return withTail(chips, shown.length, all.length, max);
   }
-  if (p.presence === undefined) return [];
+  if (p.presence === undefined)
+    return p.lmError != null
+      ? [{ cls: "lmf-more lmf-off", text: "LM offline", title: p.lmError }]
+      : [WAIT];
   const localIds = p.presence?.versions.map((v) => v.versionId) ?? [];
+  if (p.remote === undefined && focus != null) return [WAIT];
   if (p.remote == null) {
     // under focus an unknown model gets no install chip: its base model is not known yet
     if (p.presence == null)
@@ -629,6 +674,12 @@ export function parseAct(raw: string): ChipAct {
 function chipEl(c: Chip): HTMLElement {
   const el = document.createElement("span");
   el.className = `lmf-chip ${c.cls}`;
+  if (c.title != null) el.title = c.title;
+  if (c.spin === true) {
+    const s = document.createElement("span");
+    s.className = "lmf-spin";
+    el.append(s);
+  }
   if (c.act != null) {
     const b = document.createElement("span");
     b.className = "lmf-get";
@@ -675,6 +726,8 @@ export function subText(t: Target): string {
 export type TipInput = {
   modelId: number;
   presence: Presence | null;
+  /** LM has not given this card an answer: the one line the tip shows */
+  pending?: string;
   groups: BaseGroup[];
   jobs: ReadonlyMap<number, DownloadState>;
   target: (v: CivitaiVersion) => Target | null;
@@ -786,6 +839,7 @@ function line(l: TipLine): HTMLElement {
 }
 
 export function tipLines(p: TipInput, paths: Map<number, string[]> | undefined): TipLine[] {
+  if (p.pending != null) return [{ text: p.pending, cls: "muted" }];
   const out: TipLine[] = [];
   if (p.presence == null) out.push({ text: "Not in your library", cls: "head" });
   else {
@@ -874,6 +928,11 @@ function injectPageCss(): void {
   style.id = "lmf-page-css";
   style.textContent = PAGE_CSS;
   document.head.appendChild(style);
+}
+
+/** leading edge: a quiet page gets its pass at once, a burst of mutations waits out the debounce */
+export function nextPassDelay(lastPassAt: number, now: number): number {
+  return Math.max(0, lastPassAt + DEBOUNCE_MS - now);
 }
 
 export function unknownIds(

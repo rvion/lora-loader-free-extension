@@ -12,7 +12,8 @@ model (those are suggestion tiles, which get their own chips) nor inside
 the header. Civitai re-rendering its gallery moves the chips to the new
 first image.
 
-When LoRA Manager does not answer, those chips turn into
+Until the data is in, the image carries the spinner pill (see "listing
+cards"). When LoRA Manager does not answer, those chips turn into
 `[Mark Anima] loras / anima/styles`: a click marks that version with its
 target for the popup's Download all (`★ marked`, the button then says
 Unmark).
@@ -151,9 +152,20 @@ each about the **latest version of that base** (latest `publishedAt`):
 | failed | red `✕ Anima failed`, reason in the tooltip, click to retry |
 
 More than 4 bases: the first 4 in civitai's order, then `+N` (the tooltip
-lists every base). Until civitai's data for that model is in, a single chip
-stands in: `✓ LM` / `✓ LM ×N` when LM has it, plain `⬇ Install` (civitai's
-default version) when not.
+lists every base).
+
+**A card is never bare while data is on its way.** A pill shows as soon as
+the card is on screen, on the first pass:
+
+| data | pill |
+|---|---|
+| LM has not answered yet | grey pill with a small spinner |
+| LM unreachable | grey `LM offline`, the error on hover |
+| LM answered, civitai not yet | `✓ LM` / `✓ LM ×N` when LM has it, plain `Get` (civitai's default version) when not; the spinner pill under focus, since the base models are not known yet |
+| civitai failed | the same as "civitai not yet", retried after 10 s |
+
+The first pass after a quiet page runs at once; only a burst of civitai
+re-renders is debounced (300 ms).
 
 **Target folder**: the tag rules (below), with `{base}` resolved per chip,
 else the last folder used for that model type; the root label is the root's
@@ -168,7 +180,8 @@ ids. The two run in parallel, and the chips render as each one lands: a
 slow LoRA Manager never delays civitai's data. A LoRA Manager read that
 gets no answer in 5 s counts as unreachable (a box that is off on the
 network otherwise hangs ~50 s before the connection fails). LM unreachable
-→ no chips on tiles, mark chips on the model page, retried every 30 s. The
+→ `LM offline` on tiles, mark chips on the model page, retried every 30 s
+(the retry runs on its own, no page change needed). The
 chips swallow the click, so civitai's card never navigates.
 
 Chips are **glass**: a see through dark body with thin white text so the
