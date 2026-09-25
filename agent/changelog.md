@@ -3,6 +3,14 @@
 Newest first. Each entry narrates WHAT changed and WHY, for the next
 session that arrives with no context.
 
+## 2026-09-25
+
+- Chips took ~50 s to show when the LoRA Manager box was off on the
+  network: its TCP connect hangs rather than refusing, and the listing
+  pass fetched civitai's data only after LM answered. Every LM GET now
+  gives up after 5 s (LmClient readTimeoutMs), and the pass runs the LM
+  and civitai fetches in parallel, rendering as each lands.
+
 ## 2026-09-24
 
 - Focus now applies to the model page's image chips too (and to mark

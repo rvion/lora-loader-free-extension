@@ -193,15 +193,18 @@ export class ListingSvc {
     if (this.watched != null)
       onScreen.push({ el: document.createElement("a"), modelId: this.watched });
     const missing = unknownIds(onScreen, this.known, this.inflight);
-    if (missing.length > 0 && Date.now() >= this.retryAfter) {
-      await Promise.all(chunk(missing, CHUNK).map((ids) => this.fetch(ids)));
-    }
-    const noRemote = [...this.known.keys()].filter((id) => !this.remote.has(id));
-    if (this.watched != null && !this.remote.has(this.watched) && !noRemote.includes(this.watched))
-      noRemote.push(this.watched);
-    if (noRemote.length > 0)
-      await Promise.all(chunk(noRemote, CHUNK).map((ids) => this.fetchRemote(ids)));
+    const noRemote = unknownIds(onScreen, this.remote, new Set());
+    // parallel, each renders as it lands: a slow LM never holds back civitai's data
+    const lm =
+      missing.length > 0 && Date.now() >= this.retryAfter
+        ? Promise.all(chunk(missing, CHUNK).map((ids) => this.fetch(ids)))
+        : null;
+    const civitai =
+      noRemote.length > 0
+        ? Promise.all(chunk(noRemote, CHUNK).map((ids) => this.fetchRemote(ids)))
+        : null;
     this.render();
+    await Promise.all([lm?.then(() => this.render()), civitai?.then(() => this.render())]);
   }
 
   private async fetch(ids: number[]): Promise<void> {

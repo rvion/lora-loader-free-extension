@@ -27,6 +27,11 @@ pings `/api/lm/version-info` (3 s timeout): down first, then up again.
 
 ## Gotchas
 
+- Every GET read (`check-models-exist`, roots, folders, version) gives up
+  after 5 s. An unreachable host on the network does not refuse the
+  connection, it hangs until the OS connect timeout (~50 s on macOS).
+  `download-model` has no timeout: it answers only when the file is done.
+
 - `/api/lm/downloads/queue/add` only records a row: nothing on the server
   consumes that queue. Marked items are driven by the extension instead.
 - `download-model-get` exists but takes no target folder, so it is not used.

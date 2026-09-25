@@ -33,6 +33,8 @@ export type DownloadProgress =
 export type Ping = { up: false } | { up: true; version: string };
 
 const PING_TIMEOUT_MS = 3000;
+/** an unreachable network host never refuses: without a deadline a read hangs until the OS connect timeout (~50 s) */
+const READ_TIMEOUT_MS = 5000;
 
 /** newest first. ComfyUI mirrors every custom route under /api, older builds do not */
 const RESTART_ROUTES = [
@@ -50,6 +52,7 @@ export class LmClient {
   constructor(
     baseUrl: string,
     private fetchFn: FetchFn = (input, init) => fetch(input, init),
+    private readTimeoutMs = READ_TIMEOUT_MS,
   ) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
   }
@@ -195,10 +198,21 @@ export class LmClient {
   }
 
   private async getJson(path: string): Promise<Record<string, unknown>> {
-    const res = await this.fetchFn(`${this.baseUrl}${path}`);
+    const route = path.split("?")[0];
+    let res: Response;
+    try {
+      res = await this.fetchFn(`${this.baseUrl}${path}`, {
+        signal: AbortSignal.timeout(this.readTimeoutMs),
+      });
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "TimeoutError")
+        throw new Error(
+          `LoRA Manager GET ${route}: did not answer in ${this.readTimeoutMs / 1000} s at ${this.baseUrl}`,
+        );
+      throw e;
+    }
     const o = await readJson(res);
-    if (!res.ok)
-      throw new Error(`LoRA Manager GET ${path.split("?")[0]}: ${errorText(o, res.status)}`);
+    if (!res.ok) throw new Error(`LoRA Manager GET ${route}: ${errorText(o, res.status)}`);
     return o;
   }
 }

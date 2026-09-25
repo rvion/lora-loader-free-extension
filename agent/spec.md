@@ -164,8 +164,12 @@ folder and the draft all re-render the chips at once when they change.
 
 Civitai data for every model on screen comes from `/api/v1/models?ids=…`,
 100 per call. LoRA Manager presence comes from one batched call per ~100 new
-ids. LM unreachable → no chips, retried every 30 s. The chips swallow the
-click, so civitai's card never navigates.
+ids. The two run in parallel, and the chips render as each one lands: a
+slow LoRA Manager never delays civitai's data. A LoRA Manager read that
+gets no answer in 5 s counts as unreachable (a box that is off on the
+network otherwise hangs ~50 s before the connection fails). LM unreachable
+→ no chips on tiles, mark chips on the model page, retried every 30 s. The
+chips swallow the click, so civitai's card never navigates.
 
 Chips are **glass**: a see through dark body with thin white text so the
 illustration stays visible, 26px tall like the Rules and Focus buttons. The
