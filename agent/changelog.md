@@ -32,11 +32,12 @@ session that arrives with no context.
   shows which build is loaded. Three numbers, never a fourth. The version
   jumped from 1.0.0 to 2.21.1 by hand first.
 
-- Chips took ~50 s to show when the LoRA Manager box was off on the
-  network: its TCP connect hangs rather than refusing, and the listing
-  pass fetched civitai's data only after LM answered. Every LM GET now
-  gives up after 5 s (LmClient readTimeoutMs), and the pass runs the LM
-  and civitai fetches in parallel, rendering as each lands.
+- Every LM GET gives up after 5 s (LmClient readTimeoutMs): a host that
+  is off on the network hangs a TCP connect ~50 s rather than refusing it.
+  The listing pass runs the LM and civitai fetches in parallel, rendering
+  as each lands. Correction: this was first blamed for the slow chips, but
+  that probe hit the wrong port (LM runs on another port and was up). The real
+  cause was the dead extension context, see the takeover entry above.
 
 ## 2026-09-24
 
