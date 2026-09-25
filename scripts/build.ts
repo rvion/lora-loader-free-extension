@@ -1,8 +1,15 @@
 // bundles the three entry points into dist/, the folder chrome loads unpacked
 import { cp, rm } from "node:fs/promises";
 
+import { nextBuildVersion } from "scripts/buildVersion.ts";
+
 const root = new URL("..", import.meta.url).pathname;
 const dist = `${root}dist`;
+
+const prevManifest = Bun.file(`${dist}/manifest.json`);
+const prev = (await prevManifest.exists())
+  ? (((await prevManifest.json()) as { version?: string }).version ?? null)
+  : null;
 
 await rm(dist, { recursive: true, force: true });
 
@@ -29,11 +36,9 @@ if (!result.success) {
 
 await cp(`${root}static`, dist, { recursive: true });
 
-// package.json is the one version source: shipkit bump writes it, chrome reads the manifest
+// package.json is the version base (shipkit bump writes it), each build adds its number (agent/architecture.md)
 const pkg = (await Bun.file(`${root}package.json`).json()) as { version: string };
+const version = nextBuildVersion(pkg.version, prev);
 const manifest = (await Bun.file(`${dist}/manifest.json`).json()) as Record<string, unknown>;
-await Bun.write(
-  `${dist}/manifest.json`,
-  JSON.stringify({ ...manifest, version: pkg.version }, null, 2),
-);
-console.log(`built ${result.outputs.length} files → ${dist}`);
+await Bun.write(`${dist}/manifest.json`, JSON.stringify({ ...manifest, version }, null, 2));
+console.log(`built ${version}: ${result.outputs.length} files → ${dist}`);

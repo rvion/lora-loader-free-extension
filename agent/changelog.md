@@ -5,6 +5,10 @@ session that arrives with no context.
 
 ## 2026-09-25
 
+- Every build now gets a new version, `<package.json version>.<build>`
+  (scripts/buildVersion.ts). The build number comes from the previous
+  dist/manifest.json, so chrome://extensions shows which build is loaded.
+
 - Chips took ~50 s to show when the LoRA Manager box was off on the
   network: its TCP connect hangs rather than refusing, and the listing
   pass fetched civitai's data only after LM answered. Every LM GET now

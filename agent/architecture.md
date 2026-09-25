@@ -8,6 +8,12 @@
 | `src/content/content.tsx` | civitai.com page | the card, in a shadow root |
 | `src/popup/popup.tsx` | action popup | settings, marked list |
 
+Every build gets a new version, so chrome://extensions shows which build is
+loaded. `dist/manifest.json` gets `<package.json version>.<build>`, e.g.
+`1.0.0.7`. `<build>` is the previous `dist/` build number plus one, and it
+restarts at 1 when package.json's version changes. Chrome allows four
+numbers, each at most 65535.
+
 `src/shared/` is pure code imported by all three: URL parsing, type mapping,
 the LM client, the message protocol, storage keys.
 
