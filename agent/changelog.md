@@ -5,6 +5,20 @@ session that arrives with no context.
 
 ## 2026-09-25
 
+- Errors panel (ErrorSvc, ErrorPanel): every page failure goes through
+  reportError into a bottom right panel, one row per (where, message) with
+  a count, a Copy button per row and Copy all (version, page, time, stack).
+  Failures used to reach only the console, so they had to be dug out of
+  chrome://extensions to be shared.
+
+- "Extension context invalidated" was the cause of the empty cards: a
+  reloaded extension leaves each open tab with a dead copy whose every
+  call fails. The background now re-injects content.js into open civitai
+  tabs on install and update (scripting permission), the new copy sends a
+  lmf:takeover DOM event, and the old copy unmounts and removes its bar,
+  chips, tooltip and page css (CardSt.dispose, ListingSvc.dispose). A copy
+  left dead anyway reports it as "reload this page" with a Reload button.
+
 - Cards are never bare while data is on its way: a spinner pill while LM
   or civitai is answering, a grey `LM offline` pill (error on hover) when
   LM is unreachable, which used to leave the card empty. The first pass

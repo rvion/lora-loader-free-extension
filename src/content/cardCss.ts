@@ -56,6 +56,15 @@ button.link { background: none; border: none; color: #74c0fc; padding: 0 0 0 6px
 .popover-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800;
   font-size: 12px; margin-bottom: 6px; }
 .row { display: flex; gap: 6px; }
+.err-panel { position: fixed; right: 16px; bottom: 16px; z-index: 2147483647; width: min(440px, calc(100vw - 32px));
+  max-height: 50vh; display: flex; flex-direction: column; padding: 8px 10px; border-radius: 10px;
+  color: #f1f3f5; font-size: 13px; line-height: 1.25; background: #1a1b1e; border: 2px solid #ff1744;
+  box-shadow: 0 6px 24px rgba(0,0,0,.6); }
+.err-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 800; margin-bottom: 6px; }
+.err-rows { overflow: auto; display: grid; gap: 6px; }
+.err-row { display: flex; align-items: flex-start; gap: 8px; padding-top: 6px; border-top: 1px solid #373a40; }
+.err-text { flex: 1; min-width: 0; }
+.err-where { font-size: 11px; font-weight: 700; color: #ffa94d; }
 .row input { flex: 1; min-width: 0; }
 .restart { margin-top: 8px; }
 .tagbar { display: flex; align-items: center; gap: 6px; padding: 4px 10px; flex-wrap: wrap;

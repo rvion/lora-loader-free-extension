@@ -1,5 +1,6 @@
 import { makeAutoObservable, observable, runInAction } from "mobx";
 
+import { reportError } from "src/content/ErrorSvc.ts";
 import type { EditRequest, ListingSvc } from "src/content/ListingSvc.ts";
 import { lmPrefixForCivitaiType, type LmPrefix } from "src/shared/civitai.ts";
 import type { FolderChoices } from "src/shared/lmClient.ts";
@@ -72,6 +73,7 @@ export class EditSvc {
         if (this.req === req) this.choices = c;
       });
     } catch (e) {
+      reportError("target editor folders", e);
       runInAction(() => (this.loadError = errorMessage(e)));
     }
   }

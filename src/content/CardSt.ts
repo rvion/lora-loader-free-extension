@@ -20,6 +20,7 @@ import { RestartSt } from "src/shared/RestartSt.ts";
 import { matchRule, type Rule } from "src/shared/rules.ts";
 import { getSettings, onSettingsChanged, saveLmUrl } from "src/shared/storage.ts";
 import { errorMessage } from "src/shared/watchDownload.ts";
+import { ErrorSvc, reportError, setErrorSink } from "src/content/ErrorSvc.ts";
 
 /** root of the page overlay: one per tab (agent/architecture.md) */
 export class CardSt {
@@ -31,8 +32,15 @@ export class CardSt {
   ads: AdSvc;
   rules: RulesSvc;
   focus: FocusSvc;
+  errors: ErrorSvc;
+  private disposers: (() => void)[] = [];
 
   constructor() {
+    this.errors = new ErrorSvc({
+      version: chrome.runtime.getManifest().version,
+      url: () => location.href,
+    });
+    setErrorSink(this.errors);
     this.page = new PageSvc();
     this.focus = new FocusSvc();
     this.rules = new RulesSvc();
@@ -62,12 +70,23 @@ export class CardSt {
       ads: false,
       rules: false,
       focus: false,
+      errors: false,
     });
     // focus and the rule being edited retarget every chip, tiles and model page row alike
-    reaction(
-      () => JSON.stringify([this.focus.active, this.rules.draftRule]),
-      () => this.listing.refresh(),
+    this.disposers.push(
+      reaction(
+        () => JSON.stringify([this.focus.active, this.rules.draftRule]),
+        () => this.listing.refresh(),
+      ),
     );
+  }
+
+  /** a newer copy of the extension took over this tab: stop, and leave nothing on the page */
+  dispose(): void {
+    for (const d of this.disposers) d();
+    this.listing.dispose();
+    this.ads.dispose();
+    setErrorSink(null);
   }
 
   /** called on every url change the page makes */
@@ -189,6 +208,7 @@ export class ServerSvc {
       });
       if (saved === this.url) this.st.listing.forgetAll();
     } catch (e) {
+      reportError("save the LoRA Manager address", e);
       runInAction(() => (this.saveError = errorMessage(e)));
     }
   }
@@ -224,7 +244,10 @@ export class PageSvc {
     if (id == null || id === this.loadedModelId) return;
     this.loadedModelId = id;
     await this.model.run();
-    if (this.model.error != null) runInAction(() => (this.loadedModelId = null));
+    if (this.model.error != null) {
+      reportError(`civitai model ${id}`, this.model.error);
+      runInAction(() => (this.loadedModelId = null));
+    }
   }
 
   get version(): CivitaiVersion | null {

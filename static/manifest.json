@@ -4,7 +4,7 @@
   "description": "See if a Civitai model is in your LoRA Manager library, and download it into the folder you pick.",
   "version": "0.0.0",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "declarativeNetRequestWithHostAccess"],
+  "permissions": ["storage", "declarativeNetRequestWithHostAccess", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [

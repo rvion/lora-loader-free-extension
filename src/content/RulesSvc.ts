@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
+import { reportError } from "src/content/ErrorSvc.ts";
 import { PlacementSvc } from "src/content/PlacementSvc.ts";
 import type { LmPrefix } from "src/shared/civitai.ts";
 import { send } from "src/shared/messages.ts";
@@ -209,6 +210,7 @@ export class RulesSvc {
         if (this.draft === d) d.id = id;
       });
     } catch (e) {
+      reportError("save rule", e);
       runInAction(() => (this.saveError = errorMessage(e)));
     }
   }
@@ -245,7 +247,12 @@ export type AllRoots = {
 async function loadAllRoots(): Promise<AllRoots> {
   const [choices, last] = await Promise.all([
     Promise.all(
-      TYPE_LABELS.map(([prefix]) => send({ kind: "folderChoices", prefix }).catch(() => null)),
+      TYPE_LABELS.map(([prefix]) =>
+        send({ kind: "folderChoices", prefix }).catch((e: unknown) => {
+          reportError(`LoRA Manager ${prefix} roots`, e);
+          return null;
+        }),
+      ),
     ),
     getLastFolder("loras"),
   ]);

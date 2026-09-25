@@ -29,12 +29,14 @@ import {
   type FolderPick,
   type MarkedItem,
 } from "src/shared/storage.ts";
+import { reportError } from "src/content/ErrorSvc.ts";
 import { PAGE_CSS } from "src/shared/theme.ts";
 import { errorMessage, watchDownload, type DownloadState } from "src/shared/watchDownload.ts";
 
 type Presence = LibraryBatch[string];
 
 const CHIPS_ATTR = "data-lmf-chips";
+const PAGE_CSS_ID = "lmf-page-css";
 const DEBOUNCE_MS = 300;
 /** keeps the query strings of check-models-exist and civitai's models?ids= under their limits */
 const CHUNK = 100;
@@ -101,6 +103,7 @@ export class ListingSvc {
   private inflight = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastPassAt = 0;
+  private disposed = false;
   private retryAfter = 0;
   private observer: MutationObserver;
   private tip = new Tip();
@@ -125,8 +128,12 @@ export class ListingSvc {
   }
 
   dispose(): void {
+    this.disposed = true;
     this.observer.disconnect();
     if (this.timer != null) clearTimeout(this.timer);
+    this.tip.hide();
+    for (const b of document.querySelectorAll(`[${CHIPS_ATTR}]`)) b.remove();
+    document.getElementById(PAGE_CSS_ID)?.remove();
   }
 
   /** a rule, a draft or the last folder changed: retarget every chip */
@@ -197,7 +204,7 @@ export class ListingSvc {
   }
 
   private schedule(delay?: number): void {
-    if (this.timer != null) return;
+    if (this.timer != null || this.disposed) return;
     this.timer = setTimeout(
       () => {
         this.timer = null;
@@ -240,7 +247,7 @@ export class ListingSvc {
       this.lmError = errorMessage(e);
       this.retryAfter = Date.now() + DOWN_BACKOFF_MS;
       setTimeout(() => this.schedule(0), DOWN_BACKOFF_MS);
-      console.warn("[lm-free] listing chips paused 30 s:", this.lmError);
+      reportError("LoRA Manager library check (retry in 30 s)", e);
     } finally {
       for (const id of ids) this.inflight.delete(id);
     }
@@ -254,7 +261,7 @@ export class ListingSvc {
     } catch (e) {
       this.remoteRetryAfter = Date.now() + CIVITAI_BACKOFF_MS;
       setTimeout(() => this.schedule(0), CIVITAI_BACKOFF_MS);
-      console.warn("[lm-free] civitai details retried in 10 s:", errorMessage(e));
+      reportError("civitai model details (retry in 10 s)", e);
     } finally {
       for (const id of ids) this.remoteInflight.delete(id);
     }
@@ -277,6 +284,7 @@ export class ListingSvc {
 
   /** idempotent: rebuilds a card's chips only when their content changed, so it never feeds the observer a loop */
   private render(): void {
+    if (this.disposed) return;
     const cards = modelCards();
     this.tip.refresh();
     this.deps.onStats(
@@ -382,6 +390,7 @@ export class ListingSvc {
   }
 
   private setJob(modelId: number, versionId: number, s: DownloadState): void {
+    if (s.kind === "failed") reportError(`install version ${versionId}`, s.message);
     if (s.kind === "done") {
       this.jobs.delete(versionId);
       this.known.delete(modelId);
@@ -457,7 +466,7 @@ export class ListingSvc {
       });
     } catch (e) {
       if (vid != null) this.setJob(modelId, vid, { kind: "failed", message: errorMessage(e) });
-      else console.warn("[lm-free] install:", errorMessage(e));
+      else reportError("install", e);
     }
   }
 }
@@ -513,7 +522,7 @@ class FolderCtx {
       if (!this.loading.has(prefix)) {
         this.loading.add(prefix);
         void this.ensure(prefix)
-          .catch((e: unknown) => console.warn("[lm-free] roots:", errorMessage(e)))
+          .catch((e: unknown) => reportError(`LoRA Manager ${prefix} roots`, e))
           .finally(() => {
             this.loading.delete(prefix);
             this.changed();
@@ -809,7 +818,7 @@ class Tip {
       );
     } catch (e) {
       this.paths.delete(p.modelId);
-      console.warn("[lm-free] tooltip paths:", errorMessage(e));
+      reportError("tooltip file paths", e);
     }
     if (this.current?.modelId === p.modelId) this.refresh();
   }
@@ -923,9 +932,9 @@ function modelCards(): ModelCard[] {
 }
 
 function injectPageCss(): void {
-  if (document.getElementById("lmf-page-css") != null) return;
+  if (document.getElementById(PAGE_CSS_ID) != null) return;
   const style = document.createElement("style");
-  style.id = "lmf-page-css";
+  style.id = PAGE_CSS_ID;
   style.textContent = PAGE_CSS;
   document.head.appendChild(style);
 }

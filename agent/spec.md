@@ -85,6 +85,38 @@ Controls, in the overlay's header:
   dock spot, a short "nothing to dock into on this page" note shows for a
   few seconds.
 
+## Errors (a panel you can copy from)
+
+Every failure the page part of the extension meets shows in a small panel,
+bottom right, over civitai, never only in the console:
+
+```
+⚠ LoRA Manager Free · 2 errors            [Copy all] ✕
+listing: LoRA Manager GET /api/lm/check-models-exist:
+  did not answer in 5 s at http://…          ×3 · 14:02  [Copy]
+civitai details: civitai: GET models → HTTP 429  14:03  [Copy]
+```
+
+- One row per distinct (where, message); a repeat bumps its `×N` count and
+  time instead of adding a row.
+- **Copy** puts a paste-ready block on the clipboard: extension version,
+  page url, time, where, message, count, stack. **Copy all** copies every
+  row.
+- ✕ closes the panel; an error already seen stays hidden until its message
+  changes, so a 30 s retry never nags. A new error opens it again.
+- **Extension context invalidated** (the extension was reloaded or updated
+  under an open tab) reads "The extension was reloaded: reload this page",
+  with a **Reload page** button.
+
+## Extension reloads
+
+Reloading or updating the extension re-injects it into every open civitai
+tab (the background, on install and update). The new copy tells the old
+one to leave (a DOM event), and the old one removes its bar, chips,
+tooltip and page css. No tab reload needed. Where the injection cannot
+run, the old copy notices its dead context and shows the reload error
+above.
+
 ## Ads
 
 Civitai's ads are removed, visibly: each ad container gets a red glowing

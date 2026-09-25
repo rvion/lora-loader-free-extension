@@ -103,6 +103,23 @@ function networkHint(error: string): string {
     : error;
 }
 
+// a reload or update leaves open civitai tabs with a dead copy: give each the new one (agent/spec.md "extension reloads")
+chrome.runtime.onInstalled.addListener(() => void reinject());
+
+async function reinject(): Promise<void> {
+  const script = chrome.runtime.getManifest().content_scripts?.[0];
+  if (script?.matches == null || script.js == null) return;
+  const tabs = await chrome.tabs.query({ url: script.matches });
+  for (const tab of tabs) {
+    if (tab.id == null || tab.discarded === true) continue;
+    chrome.scripting
+      .executeScript({ target: { tabId: tab.id }, files: script.js })
+      .catch((e: unknown) =>
+        console.warn(`[lm-free] reinject into tab ${tab.id}:`, e instanceof Error ? e.message : e),
+      );
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg: Request, _sender, sendResponse) => {
   void dispatch(msg).then(sendResponse);
   return true;
