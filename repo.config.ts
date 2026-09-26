@@ -1,6 +1,13 @@
 import { defineRepo } from 'rvlib-shipkit/src/repo-config.ts'
 
 export default defineRepo({
+    // >>> shipkit ignored inputs — managed block, the traced audit writes it, edit outside the markers
+    ignoredInputs: {
+        test: [
+            'dist/**',
+        ],
+    },
+    // <<< shipkit ignored inputs
     identity: { colorLight: '#2193a1', colorDark: '#77d8e3' },
     name: 'lora-loader-free-extension',
     venues: [], // e.g. ['itch', 'steam'], selects which .shipkit/<venue>/ contracts are REQUIRED
