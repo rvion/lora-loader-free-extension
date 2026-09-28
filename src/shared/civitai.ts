@@ -15,6 +15,8 @@ export type CivitaiFile = {
   fp: string | null;
   size: string | null;
   format: string | null;
+  /** lowercase, the one key LoRA Manager and civitai always share */
+  sha256: string | null;
 };
 
 export type CivitaiVersion = {
@@ -213,6 +215,8 @@ function parseFiles(raw: unknown): CivitaiFile[] {
         ? (r.metadata as Record<string, unknown>)
         : {};
     const str = (v: unknown) => (typeof v === "string" ? v : null);
+    const hashes =
+      typeof r.hashes === "object" && r.hashes != null ? (r.hashes as Record<string, unknown>) : {};
     return [
       {
         id: r.id,
@@ -223,6 +227,7 @@ function parseFiles(raw: unknown): CivitaiFile[] {
         fp: str(meta.fp),
         size: str(meta.size),
         format: str(meta.format),
+        sha256: str(hashes.SHA256)?.toLowerCase() ?? null,
       },
     ];
   });

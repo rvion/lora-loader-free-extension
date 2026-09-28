@@ -1,8 +1,14 @@
 // the only module that knows LoRA Manager's wire shapes (agent/lora-manager-api.md)
 import type { LmPrefix } from "src/shared/civitai.ts";
 
-/** fileId: the civitai file LoRA Manager matched it to (SHA256, else name), null when none */
-export type LocalFile = { fileId: number | null; fileName: string; filePath: string };
+/** fileId: the civitai file LoRA Manager matched it to, null when its cached civitai data has no file list
+ *  (after any restart). sha256: looked up only then, from LoRA Manager's model list */
+export type LocalFile = {
+  fileId: number | null;
+  fileName: string;
+  filePath: string;
+  sha256: string | null;
+};
 
 export type LibraryStatus =
   | { exists: false }
@@ -109,7 +115,7 @@ export class LmClient {
     if (o.success !== true) throw new Error(`LoRA Manager: ${errorText(o)}`);
     if (o.exists !== true) return { exists: false };
     const files = (Array.isArray(o.downloadedFiles) ? o.downloadedFiles : []).flatMap(
-      (f: unknown) => {
+      (f: unknown): LocalFile[] => {
         if (typeof f !== "object" || f == null) return [];
         const r = f as Record<string, unknown>;
         if (typeof r.filePath !== "string") return [];
@@ -118,10 +124,35 @@ export class LmClient {
             ? r.fileName
             : (r.filePath.split(/[\\/]/).pop() ?? r.filePath);
         const fileId = typeof r.fileId === "number" ? r.fileId : null;
-        return [{ fileId, fileName, filePath: r.filePath }];
+        return [{ fileId, fileName, filePath: r.filePath, sha256: null }];
       },
     );
-    return { exists: true, modelType: String(o.modelType ?? "model"), files };
+    const modelType = String(o.modelType ?? "model");
+    const prefix = PREFIX_BY_LM_TYPE[modelType];
+    if (prefix != null)
+      await Promise.all(
+        files
+          .filter((f) => f.fileId == null)
+          .map(async (f) => (f.sha256 = await this.localSha256(prefix, f.filePath))),
+      );
+    return { exists: true, modelType, files };
+  }
+
+  /** null when LoRA Manager's list does not answer or has no such path: the file then stays unmatched */
+  private async localSha256(prefix: LmPrefix, filePath: string): Promise<string | null> {
+    const stem = (filePath.split(/[\\/]/).pop() ?? filePath).replace(/\.[^.]+$/, "");
+    const q = new URLSearchParams({ page: "1", page_size: "20", search: stem });
+    try {
+      const o = await this.getJson(`/api/lm/${prefix}/list?${q}`);
+      for (const it of Array.isArray(o.items) ? o.items : []) {
+        if (typeof it !== "object" || it == null) continue;
+        const r = it as Record<string, unknown>;
+        if (r.file_path === filePath && typeof r.sha256 === "string") return r.sha256.toLowerCase();
+      }
+    } catch {
+      // an unmatched file only loses its ✓ have, never the status itself
+    }
+    return null;
   }
 
   async libraryBatch(modelIds: number[]): Promise<LibraryBatch> {
@@ -217,6 +248,19 @@ export class LmClient {
     if (!res.ok) throw new Error(`LoRA Manager GET ${route}: ${errorText(o, res.status)}`);
     return o;
   }
+}
+
+const PREFIX_BY_LM_TYPE: Record<string, LmPrefix> = {
+  lora: "loras",
+  checkpoint: "checkpoints",
+  embedding: "embeddings",
+};
+
+/** by civitai file id, else by SHA256. names never work: civitai's api, LoRA Manager and the disk each use their own */
+export function ownsFile(files: LocalFile[], file: { id: number; sha256: string | null }): boolean {
+  return files.some(
+    (f) => f.fileId === file.id || (file.sha256 != null && f.sha256 === file.sha256),
+  );
 }
 
 /** LoRA Manager refuses a file (or, without file_params, a version) it already has */

@@ -40,9 +40,10 @@ Files                                  2 picked · 37.7 GB
 - **Files** lists every version of the chip's base model (latest first) and
   every weight file of each, with its variant (fp, size, format) and its
   size. Each file is a checkbox; any number can be picked, across versions.
-  A file already in the library says `✓ have` (LoRA Manager matches its
-  local files to civitai file ids by SHA256; names differ between LoRA
-  Manager and civitai's page data). Nothing is ticked until you tick: the header then
+  A file already in the library says `✓ have`: matched by the civitai
+  file id LoRA Manager gives, else by SHA256 from its model list (after a
+  restart LoRA Manager gives no ids). Never by name: civitai's api, LoRA
+  Manager and the disk each name the file their own way. Nothing is ticked until you tick: the header then
   says `nothing ticked: Get takes bf16 (default)`, the latest version's
   primary file. The first tick replaces that default, never adds to it;
   unticking the last one goes back to it. The pick applies at once to the

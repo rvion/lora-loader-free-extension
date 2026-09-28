@@ -22,7 +22,8 @@ export type MarkedItem = {
   prefix: LmPrefix;
   folder: FolderPick;
   /** absent on items marked before file picking existed */
-  file?: { id: number; label: string } | null;
+  /** sha256: absent on items marked before it was kept */
+  file?: { id: number; label: string; sha256?: string | null } | null;
 };
 
 /** one marked row per file (fileKey) */

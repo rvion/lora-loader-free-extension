@@ -12,7 +12,7 @@ import {
   type FilePick,
   type LmPrefix,
 } from "src/shared/civitai.ts";
-import type { FolderChoices } from "src/shared/lmClient.ts";
+import { ownsFile, type FolderChoices } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { normalizeSub } from "src/shared/paths.ts";
 import { setLastFolder, type FolderPick } from "src/shared/storage.ts";
@@ -139,9 +139,9 @@ export class EditSvc {
             if (!s.exists) return;
             runInAction(() => {
               if (this.req !== req) return;
-              for (const f of s.files)
-                if (f.fileId != null)
-                  this.owned.add(fileKey({ versionId: v.id, fileId: f.fileId }));
+              for (const f of v.files)
+                if (ownsFile(s.files, f))
+                  this.owned.add(fileKey({ versionId: v.id, fileId: f.id }));
             });
           }),
       );

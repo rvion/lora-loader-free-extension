@@ -1,4 +1,4 @@
-import type { DownloadProgress, LibraryStatus } from "src/shared/lmClient.ts";
+import { ownsFile, type DownloadProgress, type LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 
 export type DownloadState =
@@ -18,8 +18,8 @@ export type WatchParams = {
   downloadId: string;
   /** fileKey of the download: the active entry to clear */
   key: string;
-  /** the civitai file id, null when LoRA Manager picked the file */
-  fileId: number | null;
+  /** the civitai file, null when LoRA Manager picked the file */
+  file: { id: number; sha256: string | null } | null;
   /** false once the caller moved on: the loop stops at its next await */
   isAlive: () => boolean;
   onState: (s: DownloadState) => void;
@@ -31,11 +31,11 @@ export type WatchParams = {
 export function isFileDone(
   progress: DownloadProgress,
   status: LibraryStatus,
-  fileId: number | null,
+  file: { id: number; sha256: string | null } | null,
 ): boolean {
   if (!status.exists) return false;
-  if (fileId == null || progress.kind === "unknown") return true;
-  return status.files.some((f) => f.fileId === fileId);
+  if (file == null || progress.kind === "unknown") return true;
+  return ownsFile(status.files, file);
 }
 
 /** polls until the file is in the library or the download failed */
@@ -70,7 +70,7 @@ export function watchDownload(p: WatchParams): void {
           modelId: p.modelId,
           versionId: p.versionId,
         });
-        if (isFileDone(progress, status, p.fileId)) return finish({ kind: "done" });
+        if (isFileDone(progress, status, p.file)) return finish({ kind: "done" });
       } catch {
         // a transient check failure is retried on the next tick
       }

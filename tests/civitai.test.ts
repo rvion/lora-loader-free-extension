@@ -82,6 +82,7 @@ const file = (p: Partial<CivitaiFile>): CivitaiFile => ({
   fp: null,
   size: null,
   format: null,
+  sha256: null,
   ...p,
 });
 

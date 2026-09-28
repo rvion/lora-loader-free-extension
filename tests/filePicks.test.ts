@@ -11,7 +11,12 @@ import {
   type CivitaiVersion,
   type FilePick,
 } from "src/shared/civitai.ts";
-import { alreadyInLibrary, type LibraryStatus } from "src/shared/lmClient.ts";
+import {
+  alreadyInLibrary,
+  ownsFile,
+  type LibraryStatus,
+  type LocalFile,
+} from "src/shared/lmClient.ts";
 import { isFileDone, type DownloadState } from "src/shared/watchDownload.ts";
 
 const file = (id: number, fp: string, sizeKB: number, primary = false): CivitaiFile => ({
@@ -23,6 +28,7 @@ const file = (id: number, fp: string, sizeKB: number, primary = false): CivitaiF
   fp,
   size: null,
   format: "SafeTensor",
+  sha256: null,
 });
 
 // Krea 2 Anime as civitai serves it: v1.4 in three variants, primary bf16 first
@@ -51,6 +57,8 @@ const krea: CivitaiModel = {
   tags: [],
   versions: [v14, v10],
 };
+const INT4_SHA = "d5433a9adb2602a2a56e020e5ba5e6b8338ebc08b150ed04f890593a4b066bb8";
+const INT8_SHA = "2e27778c8fd349dae9d9ae97e473d55fee944e0822d510802de5cfa30adb752f";
 const target = (): Target => ({ root: "/ckpt", rootLabel: "checkpoints", sub: "krea2/styles" });
 const noJobs = new Map<string, DownloadState>();
 
@@ -112,6 +120,8 @@ test("a chip you have still opens the variants", () => {
 // why we think it is actually a bug, and not just meaning spec should change: LoRA Manager names a file krea2Anime_v14_3192632 while civitai's page data names it krea_2_anime_v1.4_int4_convrot, so a name match never saw the int4 as installed; the civitai file id is the one key both sides share
 test("a file is done, and had, by its civitai file id, whatever its name", () => {
   const running100 = { kind: "running", percent: 100, stage: null } as const;
+  const int4 = { id: 3192632, sha256: INT4_SHA };
+  const int8 = { id: 3192778, sha256: INT8_SHA };
   const status: LibraryStatus = {
     exists: true,
     modelType: "checkpoint",
@@ -120,14 +130,30 @@ test("a file is done, and had, by its civitai file id, whatever its name", () =>
         fileId: 3192632,
         fileName: "krea2Anime_v14_3192632.safetensors",
         filePath: "D:/m/krea_2_anime_v1.4_int4_convrot.safetensors",
+        sha256: null,
       },
     ],
   };
-  expect(isFileDone(running100, status, 3192632)).toBe(true);
-  expect(isFileDone(running100, status, 3192778)).toBe(false);
-  expect(isFileDone({ kind: "unknown" }, status, 3192778)).toBe(true);
+  expect(isFileDone(running100, status, int4)).toBe(true);
+  expect(isFileDone(running100, status, int8)).toBe(false);
+  expect(isFileDone({ kind: "unknown" }, status, int8)).toBe(true);
   expect(isFileDone(running100, { exists: false }, null)).toBe(false);
   expect(isFileDone(running100, status, null)).toBe(true);
+});
+
+// why we think it is actually a bug, and not just meaning spec should change: after a LoRA Manager restart check-model-exists answers fileId null for every file, and the three names (civitai api krea2Anime_v14_int4, LM krea2Anime_v14_3192632, disk krea_2_anime_v1.4_int4_convrot) never agree, so the int4 read as not installed; its SHA256 is the same on both sides
+test("a local file LoRA Manager could not map to an id is matched by its SHA256", () => {
+  const files: LocalFile[] = [
+    {
+      fileId: null,
+      fileName: "krea_2_anime_v1.4_int4_convrot",
+      filePath: "D:/wsp1/models/diffusion_models/krea_2_anime_v1.4_int4_convrot.safetensors",
+      sha256: INT4_SHA,
+    },
+  ];
+  expect(ownsFile(files, { id: 3192632, sha256: INT4_SHA })).toBe(true);
+  expect(ownsFile(files, { id: 3192778, sha256: INT8_SHA })).toBe(false);
+  expect(ownsFile(files, { id: 3192778, sha256: null })).toBe(false);
 });
 
 // why we think it is actually a bug, and not just meaning spec should change: ticking int4 and int8 also downloaded the pre ticked bf16 (24.5 GB), a file never chosen; agent/spec.md says Get downloads what you picked

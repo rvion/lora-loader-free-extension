@@ -48,13 +48,54 @@ test("library status reads exists, model type and where the files are", async ()
     exists: true,
     modelType: "lora",
     files: [
-      { fileId: 9, fileName: "a.safetensors", filePath: "/m/loras/style/a.safetensors" },
-      { fileId: null, fileName: "b.safetensors", filePath: "/m/loras/b.safetensors" },
+      {
+        fileId: 9,
+        fileName: "a.safetensors",
+        filePath: "/m/loras/style/a.safetensors",
+        sha256: null,
+      },
+      { fileId: null, fileName: "b.safetensors", filePath: "/m/loras/b.safetensors", sha256: null },
     ],
   });
   expect(lm.calls[0]?.url).toBe(
     "http://127.0.0.1:8188/api/lm/check-model-exists?modelId=10&modelVersionId=20",
   );
+});
+
+// why we think it is actually a bug, and not just meaning spec should change: after a LoRA Manager restart every downloadedFiles entry has fileId null, and only the SHA256 from its model list ties a local file to a civitai file
+test("a local file with no civitai id gets its SHA256 from LoRA Manager's model list", async () => {
+  const lm = fakeLm({
+    "/api/lm/check-model-exists": {
+      body: {
+        success: true,
+        exists: true,
+        modelType: "checkpoint",
+        downloadedFiles: [
+          {
+            fileId: null,
+            fileName: "krea_2_anime_v1.4_int4_convrot",
+            filePath: "D:/m/diffusion_models/krea_2_anime_v1.4_int4_convrot.safetensors",
+          },
+        ],
+      },
+    },
+    "/api/lm/checkpoints/list": {
+      body: {
+        items: [
+          { file_path: "D:/m/other/krea_2_anime_v1.4_int4_convrot.safetensors", sha256: "bad" },
+          {
+            file_path: "D:/m/diffusion_models/krea_2_anime_v1.4_int4_convrot.safetensors",
+            sha256: "D5433A",
+          },
+        ],
+      },
+    },
+  });
+  const s = await lm.client.libraryStatus(1, 2);
+  expect(s.exists && s.files[0]?.sha256).toBe("d5433a");
+  const list = new URL(lm.calls[1]?.url ?? "");
+  expect(list.pathname).toBe("/api/lm/checkpoints/list");
+  expect(list.searchParams.get("search")).toBe("krea_2_anime_v1.4_int4_convrot");
 });
 
 test("folder choices drop the empty root entry", async () => {
