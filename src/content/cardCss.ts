@@ -11,7 +11,11 @@ ${CHIP_CSS}
 .target-pop .target-row select { width: 130px; } .target-pop .target-row .combo { width: 170px; }
 .file-list { margin-top: 8px; max-height: 40vh; overflow-y: auto; }
 .file-head { display: flex; justify-content: space-between; margin-bottom: 2px; }
-.file-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+.file-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; font-size: 13px; color: #f1f3f5; }
+/* the global input rule is width 100%: a checkbox must not eat the variant name */
+.file-row input { flex: none; width: 14px; height: 14px; margin: 0; padding: 0; }
+.file-name b { font-weight: 800; }
+.file-name .muted { font-size: 12px; }
 .file-ver { width: 44px; flex: none; color: #adb5bd; font-weight: 700; }
 .file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-size { flex: none; font-variant-numeric: tabular-nums; }

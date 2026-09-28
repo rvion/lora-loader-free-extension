@@ -191,6 +191,7 @@ export class ListingSvc {
   }
 
   targetOf(modelId: number, versionId: number): Target | null {
+    void this.rev;
     const m = this.remote.get(modelId);
     const v = m?.versions.find((x) => x.id === versionId);
     return m == null || v == null ? null : this.ctx.target(m, v);

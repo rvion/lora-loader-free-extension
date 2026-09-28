@@ -131,9 +131,11 @@ const FileList = obs(function FileList(p: { st: EditSvc }) {
                 onChange={() => st.togglePick(pick)}
               />
               <span className="file-name">
-                {variantName(f)}
-                {f.format != null && f.format !== variantName(f) ? ` · ${f.format}` : ""}
-                {f.primary ? " (default)" : ""}
+                <b>{variantName(f)}</b>
+                <span className="muted">
+                  {f.format != null && f.format !== variantName(f) ? ` · ${f.format}` : ""}
+                  {f.primary ? " (default)" : ""}
+                </span>
               </span>
               <span className="file-size">{f.sizeKB != null ? formatSize(f.sizeKB) : ""}</span>
               {st.owned.has(key) && <span className="file-have">✓ have</span>}
