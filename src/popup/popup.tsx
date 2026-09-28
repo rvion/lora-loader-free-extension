@@ -5,7 +5,7 @@ import { obs } from "rvlib-mobx";
 import { PopupSt, type Launched } from "src/popup/PopupSt.ts";
 import { RestartPanel } from "src/shared/RestartPanel.tsx";
 import { summarizeCond } from "src/shared/rules.ts";
-import type { MarkedItem } from "src/shared/storage.ts";
+import { markedKey, type MarkedItem } from "src/shared/storage.ts";
 import { GLOW_CSS } from "src/shared/theme.ts";
 import type { DownloadState } from "src/shared/watchDownload.ts";
 
@@ -76,10 +76,10 @@ const Marked = obs(function Marked(p: { st: PopupSt }) {
       )}
       <ul>
         {st.marked.map((i) => (
-          <MarkedRow key={i.versionId} st={st} item={i} />
+          <MarkedRow key={markedKey(i)} st={st} item={i} />
         ))}
         {st.launched.map((l) => (
-          <LaunchedRow key={`l${l.item.versionId}`} row={l} />
+          <LaunchedRow key={`l${markedKey(l.item)}`} row={l} />
         ))}
       </ul>
       {st.marked.length > 0 && (
@@ -135,7 +135,7 @@ const MarkedRow = obs(function MarkedRow(p: { st: PopupSt; item: MarkedItem }) {
   return (
     <li>
       <ItemText item={p.item} />
-      <button className="icon" title="Remove" onClick={() => void p.st.unmark(p.item.versionId)}>
+      <button className="icon" title="Remove" onClick={() => void p.st.unmark(p.item)}>
         ×
       </button>
     </li>

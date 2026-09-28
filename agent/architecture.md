@@ -43,8 +43,14 @@ The background answers `{ ok: true, data } | { ok: false, error }`.
 - The server keeps running the download whether or not the worker lives.
   The card polls `GET /api/lm/download-progress/<id>` every second and
   re-checks existence once progress hits 100 or the id is gone.
-- Active downloads (version id → download id) live in
-  `chrome.storage.session`, so a reopened tab resumes the progress bar.
+- Every download names one Civitai file (`file_params: { id }`): LoRA
+  Manager then checks that file alone, so several variants of one version
+  can each be downloaded. Jobs, marks and active downloads are keyed by
+  `versionId:fileId` (`fileKey`), never by version alone.
+- A download is done when LoRA Manager lists that file name for the
+  version, or when it forgot the download id and the version exists.
+- Active downloads (file key → download id) live in
+  `chrome.storage.session`.
 - A late failure of that POST (after the 3 s window) is kept in worker memory
   and returned by the next `progress` call, so it still reaches the UI.
 - Download all starts every marked item at once: LoRA Manager's download
@@ -65,7 +71,8 @@ showcase image (`showcaseHost`, `renderHero`), for the model it `watch`es
 even though that model is not a tile. It bumps an observable `rev` after
 each pass (the bar reads `isLmDown` through it) and switches the model
 page's chips to mark chips while LoRA Manager is down. `EditSvc` holds
-manual targets and file picks per version for the tab; the `TargetEditor`
+manual targets and file picks (`FilePick[]`, any version of the chip's
+base model) per chip version for the tab; the `TargetEditor`
 popover edits them.
 
 There is **one** shadow host, the bar (`#lmf-tagbar-host`): Rules, Focus,
@@ -83,8 +90,9 @@ its own writes never loop the observer). Unknown ids go out in chunks of
 100 (`libraryBatch`). The overlay lives in civitai's DOM, styled by one
 `<style id="lmf-page-css">` in `<head>` (keyframes and `::after` need a
 stylesheet). Its click handler stops the event and prevents the anchor's
-navigation. Install = civitai model fetch → prefix, latest version, primary
-file → `suggestFolder` → `startDownload` → `watchDownload`.
+navigation. Install = civitai model fetch → prefix → the chip's picked
+files (default: latest version, primary file) → one `startDownload` +
+`watchDownload` per file.
 
 ## Placement (card and tag bar)
 
@@ -145,4 +153,4 @@ shadow root (card, tag bar) and the page stylesheet (listing overlays).
 | `marked` | local | `MarkedItem[]` |
 | `tagRules` | local | `TagRule[]` (order = priority) |
 | `placement2:card`, `placement2:tag` (v1 keys dropped so everyone starts docked) | local | `{ mode: "dock" \| "free", pos: { x, y } \| null }` |
-| `active` | session | `Record<versionId, downloadId>` |
+| `active` | session | `Record<fileKey, downloadId>` |

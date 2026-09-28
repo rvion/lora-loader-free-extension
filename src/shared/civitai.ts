@@ -59,8 +59,66 @@ export function fileLabel(f: CivitaiFile): string {
   return parts.length > 0 ? parts.join(" · ") : f.name;
 }
 
-function formatSize(kb: number): string {
+export function formatSize(kb: number): string {
   return kb >= 1024 * 1024 ? `${(kb / 1024 / 1024).toFixed(1)} GB` : `${Math.round(kb / 1024)} MB`;
+}
+
+/** the short name of a variant, as the chip shows it: bf16, int8, pruned… */
+export function variantName(f: CivitaiFile): string {
+  const v = f.fp ?? f.size ?? f.format ?? f.name;
+  return f.type !== "Model" ? `${f.type} ${v}` : v;
+}
+
+/** one civitai file to download. fileId null: the version has no weight file listed, LoRA Manager picks */
+export type FilePick = { versionId: number; fileId: number | null };
+
+/** jobs, marks and active downloads are keyed per file: two variants of a version are two downloads */
+export function fileKey(p: FilePick): string {
+  return `${p.versionId}:${p.fileId ?? ""}`;
+}
+
+export function defaultPicks(v: CivitaiVersion): FilePick[] {
+  return [{ versionId: v.id, fileId: weightFiles(v)[0]?.id ?? null }];
+}
+
+/** the versions a chip of this base model can pick files from, latest first */
+export function sameBase(versions: CivitaiVersion[], v: CivitaiVersion): CivitaiVersion[] {
+  return versions
+    .filter((x) => x.baseModel === v.baseModel)
+    .sort((a, b) => (isLater(a, b) ? -1 : 1));
+}
+
+export function pickedFile(
+  versions: CivitaiVersion[],
+  p: FilePick,
+): { version: CivitaiVersion; file: CivitaiFile | null } | null {
+  const version = versions.find((v) => v.id === p.versionId);
+  if (version == null) return null;
+  return { version, file: version.files.find((f) => f.id === p.fileId) ?? null };
+}
+
+/** agent/spec.md "listing cards": what Get downloads, its size, and how many files there are to pick from */
+export function picksLabel(
+  picks: FilePick[],
+  versions: CivitaiVersion[],
+  chipVersion: CivitaiVersion,
+): string {
+  const resolved = picks.flatMap((p) => pickedFile(versions, p) ?? []);
+  const total = sameBase(versions, chipVersion).reduce((n, v) => n + weightFiles(v).length, 0);
+  const kb = resolved.reduce((n, r) => n + (r.file?.sizeKB ?? 0), 0);
+  const size = kb > 0 ? formatSize(kb) : null;
+  const one = resolved.length === 1 ? resolved[0] : undefined;
+  const what =
+    one != null
+      ? [
+          one.version.id !== chipVersion.id ? one.version.name : null,
+          one.file != null ? variantName(one.file) : null,
+        ]
+          .filter((x): x is string => x != null)
+          .join(" ")
+      : `${resolved.length} files`;
+  const parts = [what, size, total > 1 ? `${resolved.length} of ${total}` : null];
+  return parts.filter((x): x is string => x != null && x !== "").join(" · ");
 }
 
 /** a model id from any link civitai renders: relative or absolute, with or without slug */

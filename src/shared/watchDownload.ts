@@ -1,4 +1,4 @@
-import type { DownloadProgress } from "src/shared/lmClient.ts";
+import type { DownloadProgress, LibraryStatus } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 
 export type DownloadState =
@@ -16,16 +16,32 @@ export type WatchParams = {
   modelId: number;
   versionId: number;
   downloadId: string;
+  /** fileKey of the download: the active entry to clear */
+  key: string;
+  /** the civitai file name, null when LoRA Manager picked the file */
+  fileName: string | null;
   /** false once the caller moved on: the loop stops at its next await */
   isAlive: () => boolean;
   onState: (s: DownloadState) => void;
 };
 
-/** polls until the version is in the library or the download failed */
+/** a version with two variants exists as soon as the first lands: the second is done only once its own file is listed.
+ *  an id LoRA Manager forgot means it finished long ago, so the version existing is enough then */
+export function isFileDone(
+  progress: DownloadProgress,
+  status: LibraryStatus,
+  fileName: string | null,
+): boolean {
+  if (!status.exists) return false;
+  if (fileName == null || progress.kind === "unknown") return true;
+  return status.files.some((f) => f.fileName === fileName);
+}
+
+/** polls until the file is in the library or the download failed */
 export function watchDownload(p: WatchParams): void {
   let unknownTicks = 0;
   const finish = async (s: DownloadState): Promise<void> => {
-    await send({ kind: "clearActive", versionId: p.versionId });
+    await send({ kind: "clearActive", key: p.key });
     if (p.isAlive()) p.onState(s);
   };
   const tick = async (): Promise<void> => {
@@ -53,7 +69,7 @@ export function watchDownload(p: WatchParams): void {
           modelId: p.modelId,
           versionId: p.versionId,
         });
-        if (status.exists) return finish({ kind: "done" });
+        if (isFileDone(progress, status, p.fileName)) return finish({ kind: "done" });
       } catch {
         // a transient check failure is retried on the next tick
       }

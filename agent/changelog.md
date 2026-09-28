@@ -3,6 +3,21 @@
 Newest first. Each entry narrates WHAT changed and WHY, for the next
 session that arrives with no context.
 
+## 2026-09-28
+
+- File picks on the chip: the chip names what Get downloads with its size
+  (`bf16 · 24.5 GB · 1 of 4 ▾`, framed yellow when the version has other
+  files), and a click opens the editor's Files list: every version of that
+  base model, every weight file, checkboxes, `✓ have`. Get downloads each
+  picked file. Cause: Krea 2 Anime v1.4 has bf16 (24.5 GB), int8 and int4;
+  Get silently took the primary bf16, and the only picker was a select
+  hidden in the target editor. That download froze the box (ComfyUI's
+  python at 40.7 GB private).
+
+- Jobs, marks and active downloads are keyed per file (`fileKey`), and a
+  download is done only once its own file name is listed: two variants of
+  one version are two downloads. The unused activeDownload message is gone.
+
 ## 2026-09-25
 
 - Errors panel (ErrorSvc, ErrorPanel): every page failure goes through

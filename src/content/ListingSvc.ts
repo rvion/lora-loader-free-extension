@@ -2,15 +2,23 @@ import { action, makeObservable, observable } from "mobx";
 
 import {
   baseGroups,
+  defaultPicks,
   fetchCivitaiModel,
   fetchCivitaiModels,
+  fileKey,
+  formatSize,
   hasNewer,
   lmPrefixForCivitaiType,
   modelIdFromHref,
+  pickedFile,
+  picksLabel,
+  sameBase,
+  variantName,
   weightFiles,
   type BaseGroup,
   type CivitaiModel,
   type CivitaiVersion,
+  type FilePick,
   type LmPrefix,
 } from "src/shared/civitai.ts";
 import { resolveFolder, withDraft } from "src/shared/folderRules.ts";
@@ -23,6 +31,7 @@ import {
   getLastFolder,
   getMarked,
   getRules,
+  markedKey,
   onMarkedChanged,
   onRulesChanged,
   setMarked,
@@ -68,6 +77,8 @@ export type Chip = {
   actLabel?: string;
   /** where it would land; a click on it opens the target editor for that version */
   target?: Target;
+  /** what Get downloads (agent/spec.md "listing cards"); check: the version has other files, look before clicking */
+  files?: { text: string; check: boolean };
   editVersion?: number;
 };
 
@@ -76,8 +87,8 @@ export type EditRequest = {
   modelId: number;
   versionId: number;
   rect: { left: number; top: number; bottom: number };
-  /** which half of the path was clicked: the editor focuses that control */
-  part: "root" | "sub";
+  /** which part of the chip was clicked: the editor focuses that control */
+  part: "root" | "sub" | "files";
 };
 
 /** what the target editor feeds back: manual targets and file picks per version */
@@ -86,7 +97,8 @@ export type ListingDeps = {
   onStats: (s: PageStats) => void;
   focus: () => RuleCond | null;
   override: (versionId: number) => FolderPick | null;
-  fileFor: (versionId: number) => number | null;
+  /** the files picked on a chip, null = nothing picked yet */
+  picksFor: (chipVersionId: number) => FilePick[] | null;
   onEdit: (req: EditRequest) => void;
 };
 
@@ -98,8 +110,8 @@ export class ListingSvc {
   private remote = new Map<number, CivitaiModel | null>();
   private remoteInflight = new Set<number>();
   private remoteRetryAfter = 0;
-  /** install jobs by version id */
-  private jobs = new Map<number, DownloadState>();
+  /** install jobs by fileKey */
+  private jobs = new Map<string, DownloadState>();
   private inflight = new Set<number>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private lastPassAt = 0;
@@ -112,7 +124,8 @@ export class ListingSvc {
   private watched: number | null = null;
   /** the last library call's error, null when it answered: tiles show it, the watched model turns into mark chips */
   private lmError: string | null = null;
-  private marked = new Set<number>();
+  /** fileKeys of the marked list */
+  private marked = new Set<string>();
   /** bumped after every pass: the model page row (react) reads it to re-render */
   rev = 0;
 
@@ -146,7 +159,7 @@ export class ListingSvc {
   }
 
   private setMarked(items: MarkedItem[]): void {
-    this.marked = new Set(items.map((i) => i.versionId));
+    this.marked = new Set(items.map(markedKey));
     this.schedule();
   }
 
@@ -160,6 +173,16 @@ export class ListingSvc {
   modelOf(modelId: number): CivitaiModel | null {
     void this.rev;
     return this.remote.get(modelId) ?? null;
+  }
+
+  /** what LoRA Manager has of a model: null when absent or not known yet */
+  presenceOf(modelId: number): Presence | null {
+    void this.rev;
+    return this.known.get(modelId) ?? null;
+  }
+
+  picksOf(v: CivitaiVersion): FilePick[] {
+    return this.deps.picksFor(v.id) ?? defaultPicks(v);
   }
 
   get isLmDown(): boolean {
@@ -184,7 +207,9 @@ export class ListingSvc {
   run(modelId: number, act: ChipAct): Promise<void> {
     if (act.kind === "install") return this.install(modelId, act.versionId);
     if (act.versionId == null) return Promise.resolve();
-    return act.kind === "mark" ? this.mark(modelId, act.versionId) : this.unmark(act.versionId);
+    return act.kind === "mark"
+      ? this.mark(modelId, act.versionId)
+      : this.unmark(modelId, act.versionId);
   }
 
   forget(modelId: number): void {
@@ -277,7 +302,8 @@ export class ListingSvc {
       focus: this.deps.focus(),
       max: modelPage ? Infinity : MAX_BASE_CHIPS,
       mode: modelPage && this.lmError != null ? "mark" : "install",
-      isMarked: (vid) => this.marked.has(vid),
+      isMarked: (key) => this.marked.has(key),
+      picks: (v) => this.picksOf(v),
       target: (v) => (m == null ? null : this.ctx.target(m, v)),
     });
   }
@@ -354,7 +380,10 @@ export class ListingSvc {
           modelId,
           versionId: Number(edit.dataset.edit),
           rect: { left: r.left, top: r.top, bottom: r.bottom },
-          part: clicked.dataset.part === "root" ? "root" : "sub",
+          part:
+            clicked.dataset.part === "root" || clicked.dataset.part === "files"
+              ? clicked.dataset.part
+              : "sub",
         });
         return;
       }
@@ -389,84 +418,108 @@ export class ListingSvc {
     };
   }
 
-  private setJob(modelId: number, versionId: number, s: DownloadState): void {
-    if (s.kind === "failed") reportError(`install version ${versionId}`, s.message);
+  private setJob(modelId: number, key: string, s: DownloadState): void {
+    if (s.kind === "failed") reportError(`install ${key}`, s.message);
     if (s.kind === "done") {
-      this.jobs.delete(versionId);
+      this.jobs.delete(key);
       this.known.delete(modelId);
       this.tip.forget(modelId);
     } else {
-      this.jobs.set(versionId, s);
+      this.jobs.set(key, s);
     }
     this.schedule();
   }
 
-  /** a version with its target and file, onto the popup's marked list */
+  /** the chip's picked files, each onto the popup's marked list with the chip's target */
   private async mark(modelId: number, versionId: number): Promise<void> {
     const m = this.remote.get(modelId);
     const v = m?.versions.find((x) => x.id === versionId);
     const prefix = m != null ? lmPrefixForCivitaiType(m.type) : null;
     const t = m != null && v != null ? this.ctx.target(m, v) : null;
     if (m == null || v == null || prefix == null || t == null) return;
-    const fileId = this.deps.fileFor(v.id) ?? weightFiles(v)[0]?.id ?? null;
-    const file = v.files.find((f) => f.id === fileId);
-    const items = (await getMarked()).filter((i) => i.versionId !== v.id);
-    await setMarked([
-      ...items,
-      {
-        modelId,
-        versionId: v.id,
-        modelName: m.name,
-        versionName: `${v.name}${v.baseModel != null ? ` · ${v.baseModel}` : ""}`,
-        prefix,
-        folder: { root: t.root, sub: t.sub },
-        file: file != null && v.files.length > 1 ? { id: file.id, label: file.name } : null,
-      },
-    ]);
+    const picks = this.picksOf(v);
+    const keys = new Set(picks.map(fileKey));
+    const items = (await getMarked()).filter((i) => !keys.has(markedKey(i)));
+    const added = picks.flatMap((p): MarkedItem[] => {
+      const r = pickedFile(m.versions, p);
+      if (r == null) return [];
+      const size = r.file?.sizeKB != null ? ` · ${formatSize(r.file.sizeKB)}` : "";
+      return [
+        {
+          modelId,
+          versionId: r.version.id,
+          modelName: m.name,
+          versionName: `${r.version.name}${r.version.baseModel != null ? ` · ${r.version.baseModel}` : ""}`,
+          prefix,
+          folder: { root: t.root, sub: t.sub },
+          file:
+            r.file != null
+              ? { id: r.file.id, label: `${variantName(r.file)}${size}`, name: r.file.name }
+              : null,
+        },
+      ];
+    });
+    await setMarked([...items, ...added]);
   }
 
-  private async unmark(versionId: number): Promise<void> {
-    await setMarked((await getMarked()).filter((i) => i.versionId !== versionId));
+  private async unmark(modelId: number, versionId: number): Promise<void> {
+    const v = this.remote.get(modelId)?.versions.find((x) => x.id === versionId);
+    const keys = new Set(v != null ? this.picksOf(v).map(fileKey) : []);
+    await setMarked(
+      (await getMarked()).filter((i) => !keys.has(markedKey(i)) && i.versionId !== versionId),
+    );
   }
 
-  /** versionId null: civitai's default (first listed) version */
+  /** every picked file of the chip, one LoRA Manager download each. versionId null: civitai's default version */
   async install(modelId: number, versionId: number | null): Promise<void> {
-    const running = versionId != null ? this.jobs.get(versionId) : undefined;
-    if (running != null && running.kind !== "failed") return;
-    let vid = versionId;
+    let picks: FilePick[] = [];
     try {
       const m = this.remote.get(modelId) ?? (await fetchCivitaiModel(location.origin, modelId));
       this.remote.set(modelId, m);
-      const v = vid != null ? m.versions.find((x) => x.id === vid) : m.versions[0];
+      const v = versionId != null ? m.versions.find((x) => x.id === versionId) : m.versions[0];
       if (v == null) throw new Error("this model has no such version");
-      vid = v.id;
-      this.setJob(modelId, v.id, { kind: "starting" });
+      picks = this.picksOf(v).filter((p) => {
+        const job = this.jobs.get(fileKey(p));
+        return job == null || job.kind === "failed";
+      });
+      for (const p of picks) this.setJob(modelId, fileKey(p), { kind: "starting" });
       const prefix = lmPrefixForCivitaiType(m.type);
       if (prefix == null) throw new Error(`Civitai type ${m.type} is not handled`);
       await this.ctx.ensure(prefix);
       const t = this.ctx.target(m, v);
       if (t == null || t.root === "") throw new Error(`LoRA Manager has no ${prefix} root`);
+      await Promise.all(picks.map((p) => this.installFile(m, p, prefix, t)));
+    } catch (e) {
+      if (picks.length === 0) reportError("install", e);
+      for (const p of picks)
+        this.setJob(modelId, fileKey(p), { kind: "failed", message: errorMessage(e) });
+    }
+  }
+
+  private async installFile(m: CivitaiModel, p: FilePick, prefix: LmPrefix, t: Target) {
+    const key = fileKey(p);
+    try {
       const r = await send({
         kind: "startDownload",
         target: {
-          modelId,
-          versionId: v.id,
+          modelId: m.id,
+          versionId: p.versionId,
           prefix,
           folder: { root: t.root, sub: t.sub },
-          fileId: this.deps.fileFor(v.id) ?? weightFiles(v)[0]?.id ?? null,
+          fileId: p.fileId,
         },
       });
-      const started = v.id;
       watchDownload({
-        modelId,
-        versionId: started,
+        modelId: m.id,
+        versionId: p.versionId,
         downloadId: r.downloadId,
+        key,
+        fileName: pickedFile(m.versions, p)?.file?.name ?? null,
         isAlive: () => true,
-        onState: (s) => this.setJob(modelId, started, s),
+        onState: (s) => this.setJob(m.id, key, s),
       });
     } catch (e) {
-      if (vid != null) this.setJob(modelId, vid, { kind: "failed", message: errorMessage(e) });
-      else reportError("install", e);
+      this.setJob(m.id, key, { kind: "failed", message: errorMessage(e) });
     }
   }
 }
@@ -561,18 +614,47 @@ export type ChipInput = {
   remote: CivitaiModel | null | undefined;
   /** LM unreachable, and this card has no answer from it */
   lmError?: string | null;
-  jobs: ReadonlyMap<number, DownloadState>;
+  /** by fileKey */
+  jobs: ReadonlyMap<string, DownloadState>;
   /** focus in force: install chips only for matching versions */
   focus?: RuleCond | null;
   /** how many base chips before +N */
   max?: number;
   /** mark: LM is down, chips queue versions for the popup's Download all */
   mode?: "install" | "mark";
-  isMarked?: (versionId: number) => boolean;
+  /** by fileKey */
+  isMarked?: (key: string) => boolean;
+  /** the files a chip downloads; default: the version's primary file */
+  picks?: (v: CivitaiVersion) => FilePick[];
   target: (v: CivitaiVersion) => Target | null;
 };
 
 const baseName = (g: BaseGroup) => g.base ?? "other";
+
+/** the job a base chip shows: any file of any version of that base, a running one before a failed one */
+function groupJob(
+  jobs: ReadonlyMap<string, DownloadState>,
+  versions: CivitaiVersion[],
+): DownloadState | null {
+  const ids = new Set(versions.map((v) => String(v.id)));
+  let failed: DownloadState | null = null;
+  for (const [key, s] of jobs) {
+    if (!ids.has(key.split(":")[0] ?? "")) continue;
+    if (s.kind === "running" || s.kind === "starting") return s;
+    if (s.kind === "failed") failed ??= s;
+  }
+  return failed;
+}
+
+/** the chip's file part: absent when civitai lists no weight file at all */
+function filesPart(
+  versions: CivitaiVersion[],
+  v: CivitaiVersion,
+  picks: FilePick[],
+): Chip["files"] | undefined {
+  if (sameBase(versions, v).every((x) => weightFiles(x).length === 0)) return undefined;
+  return { text: picksLabel(picks, versions, v), check: weightFiles(v).length > 1 };
+}
 
 /** agent/spec.md "listing cards": one chip per base model, or a stand in until civitai's data is in */
 const WAIT: Chip = { cls: "lmf-more lmf-wait", text: "", spin: true };
@@ -580,27 +662,33 @@ const WAIT: Chip = { cls: "lmf-more lmf-wait", text: "", spin: true };
 export function chipsFor(p: ChipInput): Chip[] {
   const max = p.max ?? MAX_BASE_CHIPS;
   const focus = p.focus ?? null;
+  const pick = p.picks ?? defaultPicks;
   if (p.mode === "mark") {
     if (p.remote === undefined) return [WAIT];
     if (p.remote == null) return [];
-    const facts = factsOf(p.remote);
-    const all = baseGroups(p.remote.versions, []);
+    const remote = p.remote;
+    const facts = factsOf(remote);
+    const all = baseGroups(remote.versions, []);
     const shown = all.filter(
       (g) =>
         focus == null ||
-        p.isMarked?.(g.latest.id) === true ||
+        pick(g.latest).some((x) => p.isMarked?.(fileKey(x)) === true) ||
         matchRule(focus, facts, g.latest.baseModel),
     );
     const chips = shown.slice(0, max).map((g): Chip => {
       const id = g.latest.id;
       const t = p.target(g.latest);
-      const marked = p.isMarked?.(id) === true;
+      const picks = pick(g.latest);
+      const marked = picks.some((x) => p.isMarked?.(fileKey(x)) === true);
+      const files = filesPart(remote.versions, g.latest, picks);
       return {
         cls: marked ? "lmf-cool" : "lmf-hot",
         text: marked ? "★ marked" : "",
         act: { kind: marked ? "unmark" : "mark", versionId: id },
-        actLabel: `${marked ? "Unmark" : "Mark"} ${baseName(g)}`,
-        ...(t != null ? { target: t, editVersion: id } : {}),
+        actLabel: `${marked ? "Unmark" : "Mark"} ${baseName(g)}${times(picks)}`,
+        ...(t != null ? { target: t } : {}),
+        ...(files != null ? { files } : {}),
+        ...(t != null || files != null ? { editVersion: id } : {}),
       };
     });
     return withTail(chips, shown.length, all.length, max);
@@ -627,39 +715,52 @@ export function chipsFor(p: ChipInput): Chip[] {
     const n = p.presence.versions.length;
     return [{ cls: "lmf-cool", text: n > 1 ? `✓ LM ×${n}` : "✓ LM" }];
   }
-  const facts = factsOf(p.remote);
-  const all = baseGroups(p.remote.versions, localIds);
+  const remote = p.remote;
+  const facts = factsOf(remote);
+  const all = baseGroups(remote.versions, localIds);
+  const jobOf = (g: BaseGroup) => groupJob(p.jobs, sameBase(remote.versions, g.latest));
   // focus hides install chips only: what you have, and newer versions of it, always show
   const groups = all.filter(
     (g) =>
       focus == null ||
       g.have != null ||
-      p.jobs.has(g.latest.id) ||
+      jobOf(g) != null ||
       matchRule(focus, facts, g.latest.baseModel),
   );
   const chips = groups.slice(0, max).map((g): Chip => {
     const name = baseName(g);
     const id = g.latest.id;
     const install: ChipAct = { kind: "install", versionId: id };
-    const job = p.jobs.get(id);
+    const picks = pick(g.latest);
+    const files = filesPart(remote.versions, g.latest, picks);
+    const job = jobOf(g);
     if (job != null && job.kind !== "idle" && job.kind !== "done") {
       if (job.kind === "failed")
         return { cls: "lmf-danger", text: "failed", act: install, actLabel: `Retry ${name}` };
       const progress = job.kind === "starting" ? "…" : (job.stage ?? `${Math.round(job.percent)}%`);
       return { cls: "lmf-hot lmf-busy", text: `${name} ${progress}` };
     }
-    if (g.have != null && !hasNewer(g)) return { cls: "lmf-cool", text: `✓ ${name}` };
+    if (g.have != null && !hasNewer(g))
+      return files != null
+        ? { cls: "lmf-cool", text: `✓ ${name}`, files: { text: "", check: false }, editVersion: id }
+        : { cls: "lmf-cool", text: `✓ ${name}` };
     const t = p.target(g.latest);
     const newer = hasNewer(g);
     const chip: Chip = {
       cls: "lmf-hot",
       text: newer ? `→ ${g.latest.name}` : "",
       act: install,
-      actLabel: `${newer ? "Update" : "Get"} ${name}`,
+      actLabel: `${newer ? "Update" : "Get"} ${name}${times(picks)}`,
+      ...(t != null ? { target: t } : {}),
+      ...(files != null ? { files } : {}),
     };
-    return t != null ? { ...chip, target: t, editVersion: id } : chip;
+    return t != null || files != null ? { ...chip, editVersion: id } : chip;
   });
   return withTail(chips, groups.length, all.length, max);
+}
+
+function times(picks: FilePick[]): string {
+  return picks.length > 1 ? ` ×${picks.length}` : "";
 }
 
 /** the grey tail chips: overflow past max, then what focus hid (agent/spec.md "focus") */
@@ -703,6 +804,15 @@ function chipEl(c: Chip): HTMLElement {
     label.textContent = c.text;
     el.append(label);
   }
+  if (c.files != null) {
+    const f = document.createElement("span");
+    f.className = c.files.check ? "lmf-files lmf-check" : "lmf-files";
+    if (c.editVersion != null) f.dataset.edit = String(c.editVersion);
+    f.dataset.part = "files";
+    f.title = "Pick the files to download: variants and versions";
+    f.textContent = c.files.text !== "" ? `${c.files.text} ▾` : "▾";
+    el.append(f);
+  }
   if (c.target != null) {
     const target = document.createElement("span");
     target.className = "lmf-target";
@@ -738,7 +848,8 @@ export type TipInput = {
   /** LM has not given this card an answer: the one line the tip shows */
   pending?: string;
   groups: BaseGroup[];
-  jobs: ReadonlyMap<number, DownloadState>;
+  /** by fileKey */
+  jobs: ReadonlyMap<string, DownloadState>;
   target: (v: CivitaiVersion) => Target | null;
 };
 
@@ -864,7 +975,7 @@ export function tipLines(p: TipInput, paths: Map<number, string[]> | undefined):
   }
   for (const g of p.groups) {
     const name = baseName(g);
-    const job = p.jobs.get(g.latest.id);
+    const job = groupJob(p.jobs, [g.latest]);
     if (job?.kind === "failed")
       out.push({ text: `✕ ${name}: ${job.message} (click to retry)`, cls: "bad" });
     else if (hasNewer(g))

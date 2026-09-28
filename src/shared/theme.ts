@@ -67,6 +67,11 @@ export const CHIP_CSS = `
 .lmf-sub { color: #a5d8ff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .lmf-slash { color: rgba(255,255,255,.5); font-weight: 400; }
 .lmf-root:hover, .lmf-sub:hover { text-decoration: underline; text-underline-offset: 2px; background: rgba(0,0,0,.35); }
+/* what Get downloads, with its size; framed yellow when the version has other files to check */
+.lmf-files { flex: none; cursor: pointer; font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap;
+  border-radius: 999px; padding: 0 6px; line-height: 18px; background: rgba(255,255,255,.12); }
+.lmf-files.lmf-check { color: #ffe066; box-shadow: inset 0 0 0 1.5px #fcc419; }
+.lmf-files:hover { background: rgba(0,0,0,.45); }
 `;
 
 /** injected once into civitai's own document for the listing overlays */

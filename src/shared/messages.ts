@@ -25,10 +25,9 @@ export type Protocol = {
   folderChoices: { req: { prefix: LmPrefix }; res: FolderChoices };
   startDownload: { req: { target: DownloadTarget }; res: { downloadId: string } };
   progress: { req: { downloadId: string }; res: DownloadProgress };
-  activeDownload: { req: { versionId: number }; res: string | null };
   ping: { req: Record<never, never>; res: Ping };
   restartComfy: { req: Record<never, never>; res: string };
-  clearActive: { req: { versionId: number }; res: null };
+  clearActive: { req: { key: string }; res: null };
 };
 
 export type Kind = keyof Protocol;

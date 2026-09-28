@@ -5,7 +5,7 @@ import type { CardSt } from "src/content/CardSt.ts";
 import type { EditSvc } from "src/content/EditSvc.ts";
 import { usePopoverDismiss } from "src/content/popover.ts";
 import { SubfolderBox } from "src/content/SubfolderBox.tsx";
-import { fileLabel, weightFiles } from "src/shared/civitai.ts";
+import { fileKey, formatSize, variantName, weightFiles } from "src/shared/civitai.ts";
 import { rootLabels } from "src/shared/paths.ts";
 
 /** the chip target editor, floating next to the chip that opened it (agent/spec.md "target editor") */
@@ -25,11 +25,14 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
   if (req == null) return null;
   const roots = st.choices?.roots ?? [];
   const labels = rootLabels(roots);
-  const files = v != null ? weightFiles(v) : [];
-  const pickedFile = (v != null ? st.files.get(v.id) : undefined) ?? files[0]?.id;
+  const picks = st.currentPicks;
   const left = Math.max(8, Math.min(req.rect.left, innerWidth - 380));
+  const rows = st.versions.reduce((n, x) => n + weightFiles(x).length, 0);
+  const height = 160 + Math.min(rows, 12) * 22;
   const top =
-    req.rect.bottom + 6 + 220 > innerHeight ? Math.max(8, req.rect.top - 226) : req.rect.bottom + 6;
+    req.rect.bottom + 6 + height > innerHeight
+      ? Math.max(8, req.rect.top - height - 6)
+      : req.rect.bottom + 6;
   return (
     // the anchor for outside clicks is this wrapper, so a click anywhere else closes
     <div className="editor-anchor">
@@ -78,22 +81,7 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
             </button>
           </div>
         )}
-        {files.length > 1 && v != null && (
-          <label className="file-row">
-            <span className="cond-field">file</span>
-            <select
-              value={pickedFile ?? ""}
-              onChange={(e) => st.pickFile(Number(e.currentTarget.value))}
-            >
-              {files.map((f) => (
-                <option key={f.id} value={f.id} title={f.name}>
-                  {fileLabel(f)}
-                  {f.primary ? " (default)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
+        {v != null && <FileList st={st} />}
         <div className="save-row">
           {st.isManual ? (
             <button className="small" onClick={() => st.resetToRule()}>
@@ -103,10 +91,56 @@ const EditorBox = obs(function EditorBox(p: { st: EditSvc; lmDown: boolean }) {
             <span className="muted">from the rules; any change here applies to this one only</span>
           )}
           <button className="lmf-hot" onClick={() => st.go()}>
-            {p.lmDown ? "☆ Mark here" : "⬇ Install here"}
+            {p.lmDown ? "☆ Mark" : "⬇ Install"}
+            {picks.length > 1 ? ` ${picks.length} files` : ""} here
           </button>
         </div>
       </div>
+    </div>
+  );
+});
+
+/** every version of the chip's base model and every weight file of each, as checkboxes (agent/spec.md "target editor") */
+const FileList = obs(function FileList(p: { st: EditSvc }) {
+  const st = p.st;
+  const versions = st.versions;
+  const picks = st.currentPicks;
+  const kb = picks.reduce((n, x) => {
+    const f = versions.find((v) => v.id === x.versionId)?.files.find((f) => f.id === x.fileId);
+    return n + (f?.sizeKB ?? 0);
+  }, 0);
+  if (versions.every((v) => weightFiles(v).length === 0)) return null;
+  return (
+    <div className="file-list">
+      <div className="file-head">
+        <span className="cond-field">files</span>
+        <span className="muted">
+          {picks.length} picked{kb > 0 ? ` · ${formatSize(kb)}` : ""}
+        </span>
+      </div>
+      {versions.map((v) =>
+        weightFiles(v).map((f, i) => {
+          const pick = { versionId: v.id, fileId: f.id };
+          const key = fileKey(pick);
+          return (
+            <label key={key} className="file-row" title={f.name}>
+              <span className="file-ver">{i === 0 ? v.name : ""}</span>
+              <input
+                type="checkbox"
+                checked={st.isPicked(pick)}
+                onChange={() => st.togglePick(pick)}
+              />
+              <span className="file-name">
+                {variantName(f)}
+                {f.format != null && f.format !== variantName(f) ? ` · ${f.format}` : ""}
+                {f.primary ? " (default)" : ""}
+              </span>
+              <span className="file-size">{f.sizeKB != null ? formatSize(f.sizeKB) : ""}</span>
+              {st.owned.has(key) && <span className="file-have">✓ have</span>}
+            </label>
+          );
+        }),
+      )}
     </div>
   );
 });

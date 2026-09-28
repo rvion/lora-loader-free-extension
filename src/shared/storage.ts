@@ -1,4 +1,4 @@
-import type { LmPrefix } from "src/shared/civitai.ts";
+import { fileKey, type LmPrefix } from "src/shared/civitai.ts";
 import { normalizeBaseUrl } from "src/shared/lmClient.ts";
 import {
   emptyCond,
@@ -22,8 +22,13 @@ export type MarkedItem = {
   prefix: LmPrefix;
   folder: FolderPick;
   /** absent on items marked before file picking existed */
-  file?: { id: number; label: string } | null;
+  file?: { id: number; label: string; name?: string } | null;
 };
+
+/** one marked row per file (fileKey) */
+export function markedKey(i: MarkedItem): string {
+  return fileKey({ versionId: i.versionId, fileId: i.file?.id ?? null });
+}
 
 export async function getSettings(): Promise<Settings> {
   const got = await chrome.storage.sync.get("settings");

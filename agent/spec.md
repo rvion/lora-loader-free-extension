@@ -20,22 +20,33 @@ Unmark).
 
 ## Target editor (tiles and model page)
 
-Clicking the `[root] (subfolder)` part of an install chip opens a small
-popover next to it:
+Clicking the `[root] (subfolder)` part of an install chip, or its file part,
+opens a small popover next to it:
 
 ```
-Anima · v1.0                                  ✕
-[loras ▾] / [anima/styles ▾] {base}
-File [fp16 · 2.1 GB (default) ▾]           (only when several)
-[⬇ Install here]   Reset to rule
+Krea 2 Anime · v1.4 · Krea 2                        ✕
+[checkpoints ▾] / [krea2/styles ▾] {base}
+Files                                  2 picked · 37.7 GB
+ v1.4  ☑ bf16 · SafeTensor          24.5 GB
+       ☐ int8 · SafeTensor          13.2 GB  ✓ have
+       ☑ int4 · SafeTensor           7.5 GB
+ v1.0  ☐ fp16 · SafeTensor          12.0 GB
+[⬇ Install 2 files here]   Reset to rule
 ```
 
 - Root select (short labels) and the subfolder combobox; every change
   applies at once to that chip as a **manual target** for that version
   (the chip shows it with a `✎`), and is remembered as the last folder used.
-- **Install here** runs the chip (or **☆ Mark here** when LoRA Manager is
-  down). **Reset to rule** drops the manual target.
-- Manual targets live for the tab; rules stay the defaults.
+- **Files** lists every version of the chip's base model (latest first) and
+  every weight file of each, with its variant (fp, size, format) and its
+  size. Each file is a checkbox; any number can be picked, across versions.
+  A file already in the library says `✓ have` (LoRA Manager's file names
+  for that version). Nothing picked yet = the latest version's primary
+  file. The pick applies at once to the chip.
+- **Install here** downloads every picked file into the target, one
+  LoRA Manager download each (or **☆ Mark here** marks each one when LoRA
+  Manager is down). **Reset to rule** drops the manual target.
+- Manual targets and file picks live for the tab; rules stay the defaults.
 
 ## Newer versions
 
@@ -221,7 +232,17 @@ illustration stays visible, 26px tall like the Rules and Focus buttons. The
 chip starts with its one real button, which names the base model it acts
 on: **[Get Anima]** (install), **[Update Krea 2]** (newer version),
 **[Retry Anima]** (failed), **[Mark Anima]** / **[Unmark Anima]** (LoRA
-Manager down). Then the target reads as one path, `loras / anima/styles`:
+Manager down); `×2` after the name when two files are picked.
+
+Then the **file part**: what Get will download, always with its size, so a
+25 GB file is never a surprise: `bf16 · 24.5 GB ▾` for one file, `2 files ·
+37.7 GB ▾` for several, the version name in front when an older version is
+picked (`v1.0 fp16 · 12.0 GB ▾`). When the version has other files, it
+says so and is framed in yellow so you check it before clicking: `bf16 ·
+24.5 GB · 1 of 3 ▾`. A click opens the target editor on its Files list.
+A `✓ Krea 2` chip has a small `▾` too, to pick another variant or version.
+
+Then the target reads as one path, `loras / anima/styles`:
 root and subfolder at the same size, each its own color, `/` between; a
 click on the root opens the target editor on the root select, a click on
 the subfolder opens it on the subfolder picker. The rest of the chip does
@@ -330,8 +351,8 @@ list; it never duplicates one (same conditions = same rule).
 - LoRA Manager URL, default `http://127.0.0.1:8188`, with a Test button that
   shows the LM version or the error.
 - Rules: the same list as the bar's popover, one line each, ↑ and ✕.
-- Marked list: model name, version, file variant when one was picked, target
-  folder, remove button, and
+- Marked list: model name, version, file variant and size (one row per
+  marked file), target folder, remove button, and
   **Download all** (hands every item to LoRA Manager at once. The server
   runs 5 at a time and queues the rest. Each row shows its progress, and a
   row leaves the list once its version is in the library).

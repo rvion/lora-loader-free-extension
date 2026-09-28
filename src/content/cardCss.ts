@@ -9,8 +9,13 @@ ${CHIP_CSS}
 /* fixed at the chip's viewport rect: must beat .popover's absolute, anchor relative placement */
 .popover.target-pop { position: fixed; right: auto; width: 380px; z-index: 50; }
 .target-pop .target-row select { width: 130px; } .target-pop .target-row .combo { width: 170px; }
-.file-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
-.file-row select { flex: 1; }
+.file-list { margin-top: 8px; max-height: 40vh; overflow-y: auto; }
+.file-head { display: flex; justify-content: space-between; margin-bottom: 2px; }
+.file-row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+.file-ver { width: 44px; flex: none; color: #adb5bd; font-weight: 700; }
+.file-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-size { flex: none; font-variant-numeric: tabular-nums; }
+.file-have { flex: none; color: #51cf66; font-weight: 700; }
 /* docked: a full width strip under civitai's header, one wrapping row */
 .tagbar {
   position: relative; isolation: isolate; color: #f1f3f5; font-size: 13px; line-height: 1.25;

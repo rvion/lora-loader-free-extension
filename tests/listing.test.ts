@@ -33,7 +33,7 @@ const have = (...ids: number[]) => ({
   modelType: "lora",
   versions: ids.map((id) => ({ versionId: id, name: `v${id}`, fileName: `m${id}.safetensors` })),
 });
-const noJobs = new Map<number, DownloadState>();
+const noJobs = new Map<string, DownloadState>();
 const target = (v: CivitaiVersion): Target => ({
   root: "/m/loras",
   rootLabel: "loras",
@@ -114,8 +114,8 @@ test("a later version of a base you have is flagged newer and installs that one"
 });
 
 test("jobs show on their base chip; past four bases a +N chip", () => {
-  const jobs = new Map<number, DownloadState>([
-    [11, { kind: "running", percent: 41.6, stage: null }],
+  const jobs = new Map<string, DownloadState>([
+    ["11:", { kind: "running", percent: 41.6, stage: null }],
   ]);
   expect(chipsFor({ presence: null, remote: kai, jobs, target })[1]?.text).toBe("Anima 42%");
   const many = model(...["A", "B", "C", "D", "E", "F"].map((b, i) => ver(30 + i, b, "2026-09-01")));
@@ -192,7 +192,7 @@ test("lm down on a model page: every base becomes a mark chip, marked ones unmar
     jobs: noJobs,
     target,
     mode: "mark",
-    isMarked: (v) => v === 11,
+    isMarked: (k) => k === "11:",
   });
   expect(chips.map((c) => [c.actLabel, c.text])).toEqual([
     ["Mark Krea 2", ""],

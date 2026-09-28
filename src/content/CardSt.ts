@@ -50,7 +50,7 @@ export class CardSt {
       onStats: (s) => this.rules.setStats(s),
       focus: () => this.focus.active,
       override: (vid) => this.edit.overrides.get(vid) ?? null,
-      fileFor: (vid) => this.edit.files.get(vid) ?? null,
+      picksFor: (vid) => this.edit.picks.get(vid) ?? null,
       onEdit: (req) => void this.edit.open(req),
     });
     this.edit.link(this.listing);

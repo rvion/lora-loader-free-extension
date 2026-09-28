@@ -11,6 +11,7 @@ import {
   onMarkedChanged,
   deleteRule,
   getRules,
+  markedKey,
   moveRuleUp,
   onSettingsChanged,
   onRulesChanged,
@@ -104,8 +105,9 @@ export class PopupSt {
     this.urlDraft = url;
   }
 
-  async unmark(versionId: number): Promise<void> {
-    await setMarked((await getMarked()).filter((i) => i.versionId !== versionId));
+  async unmark(item: MarkedItem): Promise<void> {
+    const key = markedKey(item);
+    await setMarked((await getMarked()).filter((i) => markedKey(i) !== key));
   }
 
   async downloadAll(): Promise<void> {
@@ -133,11 +135,13 @@ export class PopupSt {
           fileId: item.file?.id ?? null,
         },
       });
-      await this.unmark(item.versionId);
+      await this.unmark(item);
       watchDownload({
         modelId: item.modelId,
         versionId: item.versionId,
         downloadId: r.downloadId,
+        key: markedKey(item),
+        fileName: item.file?.name ?? null,
         isAlive: () => true,
         onState: (s) => this.setRowState(row, s),
       });

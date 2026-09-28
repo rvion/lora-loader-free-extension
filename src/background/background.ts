@@ -1,4 +1,5 @@
 import { installOriginRule } from "src/background/originRule.ts";
+import { fileKey } from "src/shared/civitai.ts";
 import { LmClient } from "src/shared/lmClient.ts";
 import type { Kind, Protocol, Reply, Request } from "src/shared/messages.ts";
 import { getSettings } from "src/shared/storage.ts";
@@ -24,10 +25,10 @@ async function getActive(): Promise<Record<string, string>> {
   return (got.active as Record<string, string> | undefined) ?? {};
 }
 
-async function setActive(versionId: number, downloadId: string | null): Promise<void> {
+async function setActive(key: string, downloadId: string | null): Promise<void> {
   const active = await getActive();
-  if (downloadId == null) delete active[String(versionId)];
-  else active[String(versionId)] = downloadId;
+  if (downloadId == null) delete active[key];
+  else active[key] = downloadId;
   await chrome.storage.session.set({ active });
 }
 
@@ -38,11 +39,10 @@ const handlers: Handlers = {
   libraryStatus: async (req) => (await client()).libraryStatus(req.modelId, req.versionId),
   libraryBatch: async (req) => (await client()).libraryBatch(req.modelIds),
   folderChoices: async (req) => (await client()).folderChoices(req.prefix),
-  activeDownload: async (req) => (await getActive())[String(req.versionId)] ?? null,
   ping: async () => (await client()).ping(),
   restartComfy: async () => (await client()).restartComfy(),
   clearActive: async (req) => {
-    await setActive(req.versionId, null);
+    await setActive(req.key, null);
     return null;
   },
   progress: async (req) => {
@@ -54,7 +54,8 @@ const handlers: Handlers = {
     const c = await client();
     const t = req.target;
     const downloadId = crypto.randomUUID();
-    await setActive(t.versionId, downloadId);
+    const key = fileKey(t);
+    await setActive(key, downloadId);
     const done = c.download({
       downloadId,
       modelId: t.modelId,
@@ -72,7 +73,7 @@ const handlers: Handlers = {
     );
     const early = await Promise.race([settled, sleep(FAST_FAILURE_WINDOW_MS).then(() => null)]);
     if (early?.failed === true) {
-      await setActive(t.versionId, null);
+      await setActive(key, null);
       throw new Error(early.message);
     }
     void settled.then((r) => {

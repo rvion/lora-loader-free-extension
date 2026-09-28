@@ -2,7 +2,15 @@ import { makeAutoObservable, observable, runInAction } from "mobx";
 
 import { reportError } from "src/content/ErrorSvc.ts";
 import type { EditRequest, ListingSvc } from "src/content/ListingSvc.ts";
-import { lmPrefixForCivitaiType, type LmPrefix } from "src/shared/civitai.ts";
+import {
+  defaultPicks,
+  fileKey,
+  lmPrefixForCivitaiType,
+  sameBase,
+  type CivitaiVersion,
+  type FilePick,
+  type LmPrefix,
+} from "src/shared/civitai.ts";
 import type { FolderChoices } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { normalizeSub } from "src/shared/paths.ts";
@@ -15,14 +23,17 @@ export class EditSvc {
   choices: FolderChoices | null = null;
   loadError: string | null = null;
   overrides = observable.map<number, FolderPick>();
-  files = observable.map<number, number>();
+  /** by chip version id */
+  picks = observable.map<number, FilePick[]>();
+  /** fileKeys LoRA Manager has, for the open chip's versions */
+  owned = observable.set<string>();
   private listing: ListingSvc | null = null;
 
   constructor() {
     makeAutoObservable<EditSvc, "listing">(this, {
       listing: false,
       overrides: false,
-      files: false,
+      picks: false,
     });
   }
 
@@ -41,6 +52,34 @@ export class EditSvc {
     return r == null
       ? null
       : (this.listing?.modelOf(r.modelId)?.versions.find((v) => v.id === r.versionId) ?? null);
+  }
+
+  /** every version of the chip's base model, latest first */
+  get versions(): CivitaiVersion[] {
+    const v = this.version;
+    const m = this.req != null ? this.listing?.modelOf(this.req.modelId) : null;
+    return v != null && m != null ? sameBase(m.versions, v) : [];
+  }
+
+  get currentPicks(): FilePick[] {
+    const v = this.version;
+    if (v == null) return [];
+    return this.picks.get(v.id) ?? defaultPicks(v);
+  }
+
+  isPicked(p: FilePick): boolean {
+    return this.currentPicks.some((x) => fileKey(x) === fileKey(p));
+  }
+
+  /** the last picked file stays: a chip always downloads something */
+  togglePick(p: FilePick): void {
+    const v = this.version;
+    if (v == null) return;
+    const cur = this.currentPicks;
+    const next = this.isPicked(p) ? cur.filter((x) => fileKey(x) !== fileKey(p)) : [...cur, p];
+    if (next.length === 0) return;
+    this.picks.set(v.id, next);
+    this.listing?.refresh();
   }
 
   get modelName(): string {
@@ -65,6 +104,8 @@ export class EditSvc {
     this.req = req;
     this.choices = null;
     this.loadError = null;
+    this.owned.clear();
+    void this.loadOwned(req);
     const prefix = this.prefix;
     if (prefix == null) return;
     try {
@@ -75,6 +116,31 @@ export class EditSvc {
     } catch (e) {
       reportError("target editor folders", e);
       runInAction(() => (this.loadError = errorMessage(e)));
+    }
+  }
+
+  /** which civitai files of these versions LoRA Manager has, matched by file name */
+  private async loadOwned(req: EditRequest): Promise<void> {
+    const have = new Set(
+      this.listing?.presenceOf(req.modelId)?.versions.map((v) => v.versionId) ?? [],
+    );
+    try {
+      await Promise.all(
+        this.versions
+          .filter((v) => have.has(v.id))
+          .map(async (v) => {
+            const s = await send({ kind: "libraryStatus", modelId: req.modelId, versionId: v.id });
+            if (!s.exists) return;
+            const names = new Set(s.files.map((f) => f.fileName));
+            runInAction(() => {
+              if (this.req !== req) return;
+              for (const f of v.files)
+                if (names.has(f.name)) this.owned.add(fileKey({ versionId: v.id, fileId: f.id }));
+            });
+          }),
+      );
+    } catch (e) {
+      reportError("target editor library files", e);
     }
   }
 
@@ -108,10 +174,6 @@ export class EditSvc {
     const slug = base.toLowerCase().replace(/[^a-z0-9]/g, "") || "other";
     if (!t.sub.startsWith(`${slug}/`) && t.sub !== slug)
       this.setSub(t.sub === "" ? slug : `${slug}/${t.sub}`);
-  }
-
-  pickFile(id: number): void {
-    if (this.req != null) this.files.set(this.req.versionId, id);
   }
 
   resetToRule(): void {
