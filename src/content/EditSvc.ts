@@ -7,6 +7,7 @@ import {
   fileKey,
   lmPrefixForCivitaiType,
   sameBase,
+  togglePick,
   type CivitaiVersion,
   type FilePick,
   type LmPrefix,
@@ -61,24 +62,29 @@ export class EditSvc {
     return v != null && m != null ? sameBase(m.versions, v) : [];
   }
 
+  /** what was ticked; null = nothing, the chip downloads the default */
+  get explicitPicks(): FilePick[] | null {
+    const v = this.version;
+    return v != null ? (this.picks.get(v.id) ?? null) : null;
+  }
+
+  /** what Get downloads: the ticks, else the default */
   get currentPicks(): FilePick[] {
     const v = this.version;
     if (v == null) return [];
-    return this.picks.get(v.id) ?? defaultPicks(v);
+    return this.explicitPicks ?? defaultPicks(v);
   }
 
   isPicked(p: FilePick): boolean {
-    return this.currentPicks.some((x) => fileKey(x) === fileKey(p));
+    return this.explicitPicks?.some((x) => fileKey(x) === fileKey(p)) === true;
   }
 
-  /** the last picked file stays: a chip always downloads something */
   togglePick(p: FilePick): void {
     const v = this.version;
     if (v == null) return;
-    const cur = this.currentPicks;
-    const next = this.isPicked(p) ? cur.filter((x) => fileKey(x) !== fileKey(p)) : [...cur, p];
-    if (next.length === 0) return;
-    this.picks.set(v.id, next);
+    const next = togglePick(this.explicitPicks, p);
+    if (next == null) this.picks.delete(v.id);
+    else this.picks.set(v.id, next);
     this.listing?.refresh();
   }
 

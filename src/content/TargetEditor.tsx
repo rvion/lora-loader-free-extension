@@ -5,7 +5,13 @@ import type { CardSt } from "src/content/CardSt.ts";
 import type { EditSvc } from "src/content/EditSvc.ts";
 import { usePopoverDismiss } from "src/content/popover.ts";
 import { SubfolderBox } from "src/content/SubfolderBox.tsx";
-import { fileKey, formatSize, variantName, weightFiles } from "src/shared/civitai.ts";
+import {
+  fileKey,
+  formatSize,
+  variantName,
+  weightFiles,
+  type FilePick,
+} from "src/shared/civitai.ts";
 import { rootLabels } from "src/shared/paths.ts";
 
 /** the chip target editor, floating next to the chip that opened it (agent/spec.md "target editor") */
@@ -105,17 +111,21 @@ const FileList = obs(function FileList(p: { st: EditSvc }) {
   const st = p.st;
   const versions = st.versions;
   const picks = st.currentPicks;
-  const kb = picks.reduce((n, x) => {
-    const f = versions.find((v) => v.id === x.versionId)?.files.find((f) => f.id === x.fileId);
-    return n + (f?.sizeKB ?? 0);
-  }, 0);
+  const fileOf = (x: FilePick) =>
+    versions.find((v) => v.id === x.versionId)?.files.find((f) => f.id === x.fileId);
+  const kb = picks.reduce((n, x) => n + (fileOf(x)?.sizeKB ?? 0), 0);
+  const fallback = st.explicitPicks == null ? picks[0] : undefined;
+  const fallbackFile = fallback != null ? fileOf(fallback) : undefined;
   if (versions.every((v) => weightFiles(v).length === 0)) return null;
   return (
     <div className="file-list">
       <div className="file-head">
         <span className="cond-field">files</span>
         <span className="muted">
-          {picks.length} picked{kb > 0 ? ` · ${formatSize(kb)}` : ""}
+          {fallback != null
+            ? `nothing ticked: Get takes ${fallbackFile != null ? variantName(fallbackFile) : "the primary file"} (default)`
+            : `${picks.length} ticked`}
+          {kb > 0 ? ` · ${formatSize(kb)}` : ""}
         </span>
       </div>
       {versions.map((v) =>

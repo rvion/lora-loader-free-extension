@@ -77,6 +77,16 @@ export function fileKey(p: FilePick): string {
   return `${p.versionId}:${p.fileId ?? ""}`;
 }
 
+/** explicit picks after one tick. null = nothing ticked: the chip falls back to defaultPicks */
+export function togglePick(explicit: FilePick[] | null, p: FilePick): FilePick[] | null {
+  const cur = explicit ?? [];
+  const key = fileKey(p);
+  const next = cur.some((x) => fileKey(x) === key)
+    ? cur.filter((x) => fileKey(x) !== key)
+    : [...cur, p];
+  return next.length > 0 ? next : null;
+}
+
 export function defaultPicks(v: CivitaiVersion): FilePick[] {
   return [{ versionId: v.id, fileId: weightFiles(v)[0]?.id ?? null }];
 }

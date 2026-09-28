@@ -5,12 +5,13 @@ import {
   defaultPicks,
   fileKey,
   picksLabel,
+  togglePick,
   type CivitaiFile,
   type CivitaiModel,
   type CivitaiVersion,
   type FilePick,
 } from "src/shared/civitai.ts";
-import type { LibraryStatus } from "src/shared/lmClient.ts";
+import { alreadyInLibrary, type LibraryStatus } from "src/shared/lmClient.ts";
 import { isFileDone, type DownloadState } from "src/shared/watchDownload.ts";
 
 const file = (id: number, fp: string, sizeKB: number, primary = false): CivitaiFile => ({
@@ -121,4 +122,26 @@ test("a file is done when its own name is in the library, not just its version",
   expect(isFileDone({ kind: "unknown" }, status, "b.safetensors")).toBe(true);
   expect(isFileDone(running100, { exists: false }, null)).toBe(false);
   expect(isFileDone(running100, status, null)).toBe(true);
+});
+
+// why we think it is actually a bug, and not just meaning spec should change: ticking int4 and int8 also downloaded the pre ticked bf16 (24.5 GB), a file never chosen; agent/spec.md says Get downloads what you picked
+test("the first tick replaces the default, it never adds to it", () => {
+  const int4 = { versionId: 3307085, fileId: 3192632 };
+  const int8 = { versionId: 3307085, fileId: 3192778 };
+  expect(togglePick(null, int4)).toEqual([int4]);
+  expect(togglePick([int4], int8)).toEqual([int4, int8]);
+  expect(togglePick([int4], int4)).toBeNull();
+});
+
+// why we think it is actually a bug, and not just meaning spec should change: LoRA Manager refusing a file because it is already there means you have it, the chip must not say failed
+test("an already there answer from LoRA Manager is recognised", () => {
+  expect(
+    alreadyInLibrary(
+      "LoRA Manager download: File 'krea2Anime_v14_3192778.safetensors' from model version 3307085 already exists in checkpoint library",
+    ),
+  ).toBe(true);
+  expect(
+    alreadyInLibrary("LoRA Manager download: Model version already exists in lora library"),
+  ).toBe(true);
+  expect(alreadyInLibrary("LoRA Manager download: HTTP 500")).toBe(false);
 });

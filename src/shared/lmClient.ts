@@ -217,6 +217,11 @@ export class LmClient {
   }
 }
 
+/** LoRA Manager refuses a file (or, without file_params, a version) it already has */
+export function alreadyInLibrary(message: string): boolean {
+  return /already exists in \w+ library/.test(message);
+}
+
 export function normalizeBaseUrl(raw: string): string {
   const trimmed = raw.trim();
   // scheme detection runs before any slash trimming: "http://" must stay hostless and throw

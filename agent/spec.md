@@ -41,10 +41,14 @@ Files                                  2 picked · 37.7 GB
   every weight file of each, with its variant (fp, size, format) and its
   size. Each file is a checkbox; any number can be picked, across versions.
   A file already in the library says `✓ have` (LoRA Manager's file names
-  for that version). Nothing picked yet = the latest version's primary
-  file. The pick applies at once to the chip.
+  for that version). Nothing is ticked until you tick: the header then
+  says `nothing ticked: Get takes bf16 (default)`, the latest version's
+  primary file. The first tick replaces that default, never adds to it;
+  unticking the last one goes back to it. The pick applies at once to the
+  chip.
 - **Install here** downloads every picked file into the target, one
-  LoRA Manager download each (or **☆ Mark here** marks each one when LoRA
+  LoRA Manager download each (a file LoRA Manager answers "already exists"
+  for counts as installed, not failed) (or **☆ Mark here** marks each one when LoRA
   Manager is down). **Reset to rule** drops the manual target.
 - Manual targets and file picks live for the tab; rules stay the defaults.
 

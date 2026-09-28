@@ -1,5 +1,6 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
+import { alreadyInLibrary } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
 import type { Rule } from "src/shared/rules.ts";
@@ -146,7 +147,11 @@ export class PopupSt {
         onState: (s) => this.setRowState(row, s),
       });
     } catch (e) {
-      this.setRowState(row, { kind: "failed", message: errorMessage(e) });
+      const message = errorMessage(e);
+      this.setRowState(
+        row,
+        alreadyInLibrary(message) ? { kind: "done" } : { kind: "failed", message },
+      );
     }
   }
 

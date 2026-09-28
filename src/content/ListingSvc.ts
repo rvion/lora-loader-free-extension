@@ -23,7 +23,7 @@ import {
 } from "src/shared/civitai.ts";
 import { resolveFolder, withDraft } from "src/shared/folderRules.ts";
 import type { PageStats } from "src/content/RulesSvc.ts";
-import type { LibraryBatch } from "src/shared/lmClient.ts";
+import { alreadyInLibrary, type LibraryBatch } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { rootLabels, whereInLibrary } from "src/shared/paths.ts";
 import { matchRule, type ModelFacts, type Rule, type RuleCond } from "src/shared/rules.ts";
@@ -520,7 +520,12 @@ export class ListingSvc {
         onState: (s) => this.setJob(m.id, key, s),
       });
     } catch (e) {
-      this.setJob(m.id, key, { kind: "failed", message: errorMessage(e) });
+      const message = errorMessage(e);
+      this.setJob(
+        m.id,
+        key,
+        alreadyInLibrary(message) ? { kind: "done" } : { kind: "failed", message },
+      );
     }
   }
 }
