@@ -142,7 +142,7 @@ export class PopupSt {
         versionId: item.versionId,
         downloadId: r.downloadId,
         key: markedKey(item),
-        fileName: item.file?.name ?? null,
+        fileId: item.file?.id ?? null,
         isAlive: () => true,
         onState: (s) => this.setRowState(row, s),
       });

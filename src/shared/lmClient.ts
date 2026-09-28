@@ -1,7 +1,8 @@
 // the only module that knows LoRA Manager's wire shapes (agent/lora-manager-api.md)
 import type { LmPrefix } from "src/shared/civitai.ts";
 
-export type LocalFile = { fileName: string; filePath: string };
+/** fileId: the civitai file LoRA Manager matched it to (SHA256, else name), null when none */
+export type LocalFile = { fileId: number | null; fileName: string; filePath: string };
 
 export type LibraryStatus =
   | { exists: false }
@@ -116,7 +117,8 @@ export class LmClient {
           typeof r.fileName === "string"
             ? r.fileName
             : (r.filePath.split(/[\\/]/).pop() ?? r.filePath);
-        return [{ fileName, filePath: r.filePath }];
+        const fileId = typeof r.fileId === "number" ? r.fileId : null;
+        return [{ fileId, fileName, filePath: r.filePath }];
       },
     );
     return { exists: true, modelType: String(o.modelType ?? "model"), files };

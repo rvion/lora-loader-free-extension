@@ -18,23 +18,24 @@ export type WatchParams = {
   downloadId: string;
   /** fileKey of the download: the active entry to clear */
   key: string;
-  /** the civitai file name, null when LoRA Manager picked the file */
-  fileName: string | null;
+  /** the civitai file id, null when LoRA Manager picked the file */
+  fileId: number | null;
   /** false once the caller moved on: the loop stops at its next await */
   isAlive: () => boolean;
   onState: (s: DownloadState) => void;
 };
 
-/** a version with two variants exists as soon as the first lands: the second is done only once its own file is listed.
+/** a version with two variants exists as soon as the first lands: the second is done only once its own file id is listed.
+ *  names differ between LoRA Manager and civitai's page data, the file id does not.
  *  an id LoRA Manager forgot means it finished long ago, so the version existing is enough then */
 export function isFileDone(
   progress: DownloadProgress,
   status: LibraryStatus,
-  fileName: string | null,
+  fileId: number | null,
 ): boolean {
   if (!status.exists) return false;
-  if (fileName == null || progress.kind === "unknown") return true;
-  return status.files.some((f) => f.fileName === fileName);
+  if (fileId == null || progress.kind === "unknown") return true;
+  return status.files.some((f) => f.fileId === fileId);
 }
 
 /** polls until the file is in the library or the download failed */
@@ -69,7 +70,7 @@ export function watchDownload(p: WatchParams): void {
           modelId: p.modelId,
           versionId: p.versionId,
         });
-        if (isFileDone(progress, status, p.fileName)) return finish({ kind: "done" });
+        if (isFileDone(progress, status, p.fileId)) return finish({ kind: "done" });
       } catch {
         // a transient check failure is retried on the next tick
       }

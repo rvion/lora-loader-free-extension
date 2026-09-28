@@ -48,8 +48,8 @@ test("library status reads exists, model type and where the files are", async ()
     exists: true,
     modelType: "lora",
     files: [
-      { fileName: "a.safetensors", filePath: "/m/loras/style/a.safetensors" },
-      { fileName: "b.safetensors", filePath: "/m/loras/b.safetensors" },
+      { fileId: 9, fileName: "a.safetensors", filePath: "/m/loras/style/a.safetensors" },
+      { fileId: null, fileName: "b.safetensors", filePath: "/m/loras/b.safetensors" },
     ],
   });
   expect(lm.calls[0]?.url).toBe(

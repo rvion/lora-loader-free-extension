@@ -137,11 +137,11 @@ export class EditSvc {
           .map(async (v) => {
             const s = await send({ kind: "libraryStatus", modelId: req.modelId, versionId: v.id });
             if (!s.exists) return;
-            const names = new Set(s.files.map((f) => f.fileName));
             runInAction(() => {
               if (this.req !== req) return;
-              for (const f of v.files)
-                if (names.has(f.name)) this.owned.add(fileKey({ versionId: v.id, fileId: f.id }));
+              for (const f of s.files)
+                if (f.fileId != null)
+                  this.owned.add(fileKey({ versionId: v.id, fileId: f.fileId }));
             });
           }),
       );

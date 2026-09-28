@@ -22,7 +22,7 @@ export type MarkedItem = {
   prefix: LmPrefix;
   folder: FolderPick;
   /** absent on items marked before file picking existed */
-  file?: { id: number; label: string; name?: string } | null;
+  file?: { id: number; label: string } | null;
 };
 
 /** one marked row per file (fileKey) */

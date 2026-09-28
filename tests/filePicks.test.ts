@@ -109,17 +109,23 @@ test("a chip you have still opens the variants", () => {
   expect(chip?.editVersion).toBe(3307085);
 });
 
-// why we think it is actually a bug, and not just meaning spec should change: with two variants of one version, the first one landing makes the version exist, and the second watcher must not call itself done at 100% before its own file is in
-test("a file is done when its own name is in the library, not just its version", () => {
+// why we think it is actually a bug, and not just meaning spec should change: LoRA Manager names a file krea2Anime_v14_3192632 while civitai's page data names it krea_2_anime_v1.4_int4_convrot, so a name match never saw the int4 as installed; the civitai file id is the one key both sides share
+test("a file is done, and had, by its civitai file id, whatever its name", () => {
   const running100 = { kind: "running", percent: 100, stage: null } as const;
   const status: LibraryStatus = {
     exists: true,
     modelType: "checkpoint",
-    files: [{ fileName: "a.safetensors", filePath: "/c/a.safetensors" }],
+    files: [
+      {
+        fileId: 3192632,
+        fileName: "krea2Anime_v14_3192632.safetensors",
+        filePath: "D:/m/krea_2_anime_v1.4_int4_convrot.safetensors",
+      },
+    ],
   };
-  expect(isFileDone(running100, status, "b.safetensors")).toBe(false);
-  expect(isFileDone(running100, status, "a.safetensors")).toBe(true);
-  expect(isFileDone({ kind: "unknown" }, status, "b.safetensors")).toBe(true);
+  expect(isFileDone(running100, status, 3192632)).toBe(true);
+  expect(isFileDone(running100, status, 3192778)).toBe(false);
+  expect(isFileDone({ kind: "unknown" }, status, 3192778)).toBe(true);
   expect(isFileDone(running100, { exists: false }, null)).toBe(false);
   expect(isFileDone(running100, status, null)).toBe(true);
 });

@@ -453,10 +453,7 @@ export class ListingSvc {
           versionName: `${r.version.name}${r.version.baseModel != null ? ` · ${r.version.baseModel}` : ""}`,
           prefix,
           folder: { root: t.root, sub: t.sub },
-          file:
-            r.file != null
-              ? { id: r.file.id, label: `${variantName(r.file)}${size}`, name: r.file.name }
-              : null,
+          file: r.file != null ? { id: r.file.id, label: `${variantName(r.file)}${size}` } : null,
         },
       ];
     });
@@ -515,7 +512,7 @@ export class ListingSvc {
         versionId: p.versionId,
         downloadId: r.downloadId,
         key,
-        fileName: pickedFile(m.versions, p)?.file?.name ?? null,
+        fileId: p.fileId,
         isAlive: () => true,
         onState: (s) => this.setJob(m.id, key, s),
       });
