@@ -1,0 +1,1 @@
+<!-- global contribution: what this repo offers every agent in every house repo, such as the commands another repo can run and what they produce. The house concatenates every repo's file into one context loaded in every session, so keep it to what another repo's agent can act on: at most 40 lines, no heading above ####. Empty contributes nothing. This comment is dropped. -->
