@@ -18,7 +18,8 @@
       "Bash(npx oxlint*)",
       "Bash(oxlint*)",
       "Bash(npx eslint*)",
-      "Bash(eslint*)"
+      "Bash(eslint*)",
+      "Bash(git stash*)"
     ]
   },
   "hooks": {

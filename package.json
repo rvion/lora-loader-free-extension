@@ -5,9 +5,6 @@
     "type": "module",
     "scripts": {
         "build": "bun scripts/build.ts",
-        "lint": "shipkit ci --only lint",
-        "lint:raw": "oxlint src/ scripts/ tests/",
-        "fmt": "oxfmt src/ scripts/ tests/",
         "typecheck": "shipkit ci --only typecheck",
         "typecheck:raw": "tsc --noEmit",
         "hub": "bun --watch node_modules/rvlib-shipkit/src/cli.ts serve",
@@ -19,8 +16,6 @@
         "@types/chrome": "^0.3.0",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
-        "oxfmt": "^0.70.0",
-        "oxlint": "^1.85.0",
         "rvlib-shipkit": "^2.0.0",
         "typescript": "^7.0.2"
     },

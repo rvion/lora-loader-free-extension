@@ -13,6 +13,7 @@ backups/
 !.shipkit/identity/
 !.shipkit/assets/
 !.shipkit/comfy/
+!.shipkit/repros/
 .shipkit/assets/out/
 .shipkit/private/
 .shipkit/tmp/

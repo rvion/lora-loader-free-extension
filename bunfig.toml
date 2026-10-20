@@ -1,0 +1,10 @@
+# style for a manual `bun fmt`: nothing formats in the gate (build/typescript.md)
+[fmt]
+semi = false
+singleQuote = true
+printWidth = 140
+tabWidth = 4
+ignorePatterns = ["*.md", "*.json", "*.jsonc", "*.yaml", "*.yml", "*.toml"]
+
+# the house linter is `bun lint`, the `lint` slot of `sk ci` (build/typescript.md)
+[lint]
