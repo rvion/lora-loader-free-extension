@@ -8,3 +8,7 @@ ignorePatterns = ["*.md", "*.json", "*.jsonc", "*.yaml", "*.yml", "*.toml"]
 
 # the house linter is `bun lint`, the `lint` slot of `sk ci` (build/typescript.md)
 [lint]
+
+[lint.rules]
+# `{}` as a type accepts any non nullish value: name the shape, or write Record<string, never>
+"typescript/no-empty-object-type" = "error"
