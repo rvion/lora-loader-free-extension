@@ -186,3 +186,17 @@ function onLocalChanged<T>(key: string, cb: (v: T | undefined) => void): () => v
   chrome.storage.onChanged.addListener(listener);
   return () => chrome.storage.onChanged.removeListener(listener);
 }
+
+/** ad removal (agent/spec.md "ads"): off until the user turns it on */
+export async function getImproveExperience(): Promise<boolean> {
+  const got = await chrome.storage.local.get("improveExperience");
+  return got.improveExperience === true;
+}
+
+export async function setImproveExperience(on: boolean): Promise<void> {
+  await chrome.storage.local.set({ improveExperience: on });
+}
+
+export function onImproveExperienceChanged(cb: (on: boolean) => void): () => void {
+  return onLocalChanged<boolean>("improveExperience", (v) => cb(v === true));
+}

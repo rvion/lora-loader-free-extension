@@ -1,5 +1,6 @@
 import { installOriginRule } from "src/background/originRule.ts";
 import { fileKey } from "src/shared/civitai.ts";
+import { hasHostAccess, noAccessMessage } from "src/shared/hostAccess.ts";
 import { LmClient } from "src/shared/lmClient.ts";
 import type { Kind, Protocol, Reply, Request } from "src/shared/messages.ts";
 import { getSettings } from "src/shared/storage.ts";
@@ -13,6 +14,7 @@ let originRuleFor: string | null = null;
 
 async function client(url?: string): Promise<LmClient> {
   const c = new LmClient(url ?? (await getSettings()).lmUrl);
+  if (!(await hasHostAccess(c.baseUrl))) throw new Error(noAccessMessage(c.baseUrl));
   if (originRuleFor !== c.baseUrl) {
     await installOriginRule(c.baseUrl);
     originRuleFor = c.baseUrl;
@@ -41,6 +43,11 @@ const handlers: Handlers = {
   folderChoices: async (req) => (await client()).folderChoices(req.prefix),
   ping: async () => (await client()).ping(),
   restartComfy: async () => (await client()).restartComfy(),
+  hostAccess: async (req) => hasHostAccess(req.url),
+  openOptions: async () => {
+    await chrome.runtime.openOptionsPage();
+    return null;
+  },
   clearActive: async (req) => {
     await setActive(req.key, null);
     return null;

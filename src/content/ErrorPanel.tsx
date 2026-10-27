@@ -13,7 +13,7 @@ export const ErrorPanel = obs(function ErrorPanel(p: { st: ErrorSvc }) {
     <div className="err-panel" role="alert">
       <div className="err-head">
         <span>
-          ⚠ LoRA Manager Free · {n} error{n > 1 ? "s" : ""}
+          ⚠ Civitai to LoRA Manager · {n} error{n > 1 ? "s" : ""}
         </span>
         <span className="row">
           {st.needsReload && (

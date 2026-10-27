@@ -19,6 +19,12 @@ export const ServerPopover = obs(function ServerPopover(p: { st: CardSt }) {
         </button>
       </div>
       {sv.lmUnreachable && <p className="error">LoRA Manager does not answer at {sv.url}</p>}
+      {!sv.hasAccess && (
+        <p className="error">
+          Chrome has not allowed {sv.host} yet.{" "}
+          <button onClick={() => sv.openOptions()}>Allow…</button>
+        </p>
+      )}
       <label>
         ComfyUI / LoRA Manager address
         <span className="row">

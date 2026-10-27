@@ -28,6 +28,8 @@ export type Protocol = {
   ping: { req: Record<never, never>; res: Ping };
   restartComfy: { req: Record<never, never>; res: string };
   clearActive: { req: { key: string }; res: null };
+  hostAccess: { req: { url: string }; res: boolean };
+  openOptions: { req: Record<never, never>; res: null };
 };
 
 export type Kind = keyof Protocol;

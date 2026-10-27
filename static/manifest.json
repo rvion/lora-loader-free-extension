@@ -1,19 +1,59 @@
 {
   "manifest_version": 3,
-  "name": "LoRA Manager Free",
+  "name": "Civitai to LoRA Manager (unofficial)",
   "description": "See if a Civitai model is in your LoRA Manager library, and download it into the folder you pick.",
   "version": "0.0.0",
   "minimum_chrome_version": "116",
-  "permissions": ["storage", "declarativeNetRequestWithHostAccess", "scripting"],
-  "host_permissions": ["http://*/*", "https://*/*"],
-  "background": { "service_worker": "background.js" },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "declarativeNetRequestWithHostAccess",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://civitai.com/*",
+    "https://www.civitai.com/*",
+    "https://civitai.red/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://civitai.com/*", "https://www.civitai.com/*", "https://civitai.red/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://civitai.com/*",
+        "https://www.civitai.com/*",
+        "https://civitai.red/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "options_ui": { "page": "popup.html", "open_in_tab": false },
-  "action": { "default_popup": "popup.html", "default_title": "LoRA Manager" }
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": false
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Civitai to LoRA Manager",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
 }

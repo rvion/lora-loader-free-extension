@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 
-import { alreadyInLibrary } from "src/shared/lmClient.ts";
+import { hasHostAccess, requestHostAccess } from "src/shared/hostAccess.ts";
+import { alreadyInLibrary, normalizeBaseUrl } from "src/shared/lmClient.ts";
 import { send } from "src/shared/messages.ts";
 import { Query } from "src/shared/Query.ts";
 import type { Rule } from "src/shared/rules.ts";
@@ -35,6 +36,8 @@ export class PopupSt {
   rules: Rule[] = [];
   isLaunching = false;
   saveError: string | null = null;
+  /** chrome allows the saved address (agent/spec.md "host access") */
+  hasAccess = true;
 
   constructor() {
     this.test = new Query(() => send({ kind: "lmVersion", url: this.urlDraft }));
@@ -54,6 +57,7 @@ export class PopupSt {
       this.savedUrl = settings.lmUrl;
       this.marked = marked;
     });
+    void this.checkAccess();
     onMarkedChanged((items) => this.setMarkedItems(items));
     onSettingsChanged((s) => this.setSaved(s.lmUrl));
     const rules = await getRules();
@@ -86,8 +90,23 @@ export class PopupSt {
     return this.urlDraft.trim() !== this.savedUrl;
   }
 
+  get savedHost(): string {
+    try {
+      return new URL(this.savedUrl).hostname;
+    } catch {
+      return this.savedUrl;
+    }
+  }
+
   async saveUrl(): Promise<void> {
     this.saveError = null;
+    // the grant must start inside the click, before any other await
+    let granted: Promise<boolean> = Promise.resolve(true);
+    try {
+      granted = requestHostAccess(normalizeBaseUrl(this.urlDraft));
+    } catch {
+      // saveLmUrl below reports the bad address
+    }
     try {
       const url = await saveLmUrl(this.urlDraft);
       runInAction(() => {
@@ -98,12 +117,26 @@ export class PopupSt {
       runInAction(() => (this.saveError = errorMessage(e)));
       return;
     }
+    await granted.catch(() => false);
+    await this.checkAccess();
     await this.test.run();
+  }
+
+  async allowAccess(): Promise<void> {
+    await requestHostAccess(this.savedUrl).catch(() => false);
+    await this.checkAccess();
+    if (this.hasAccess) await this.test.run();
+  }
+
+  async checkAccess(): Promise<void> {
+    const ok = await hasHostAccess(this.savedUrl).catch(() => true);
+    runInAction(() => (this.hasAccess = ok));
   }
 
   setSaved(url: string): void {
     this.savedUrl = url;
     this.urlDraft = url;
+    void this.checkAccess();
   }
 
   async unmark(item: MarkedItem): Promise<void> {

@@ -2,6 +2,7 @@
 import { cp, rm } from "node:fs/promises";
 
 import { nextBuildVersion, withVersion } from "scripts/buildVersion.ts";
+import { iconPng, MANIFEST_ICON_SIZES } from "scripts/icon.ts";
 
 const root = new URL("..", import.meta.url).pathname;
 const dist = `${root}dist`;
@@ -30,12 +31,15 @@ if (!result.success) {
 }
 
 await cp(`${root}static`, dist, { recursive: true });
+for (const size of MANIFEST_ICON_SIZES) await Bun.write(`${dist}/icons/icon${size}.png`, await iconPng(size));
 
-// every successful build is a new patch, written back to package.json, the one version source (agent/architecture.md)
+// every dev build is a new patch, written back to package.json, the one version source (agent/architecture.md).
+// --release ships the committed version as is
 const pkgPath = `${root}package.json`;
 const raw = await Bun.file(pkgPath).text();
-const version = nextBuildVersion((JSON.parse(raw) as { version: string }).version);
-await Bun.write(pkgPath, withVersion(raw, version));
+const current = (JSON.parse(raw) as { version: string }).version;
+const version = process.argv.includes("--release") ? current : nextBuildVersion(current);
+if (version !== current) await Bun.write(pkgPath, withVersion(raw, version));
 const manifest = (await Bun.file(`${dist}/manifest.json`).json()) as Record<string, unknown>;
 await Bun.write(`${dist}/manifest.json`, JSON.stringify({ ...manifest, version }, null, 2));
 console.log(`built ${version}: ${result.outputs.length} files → ${dist}`);

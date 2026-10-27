@@ -15,7 +15,7 @@ const Popup = obs(function Popup(p: { st: PopupSt }) {
   const st = p.st;
   return (
     <main>
-      <h1>LoRA Manager</h1>
+      <h1>Civitai to LoRA Manager (unofficial)</h1>
       <Connection st={st} />
       <Marked st={st} />
       <Rules st={st} />
@@ -41,6 +41,11 @@ const Connection = obs(function Connection(p: { st: PopupSt }) {
         />
       </label>
       <p className="muted">Host, IP or full URL, e.g. 192.168.1.20:8188</p>
+      {!st.hasAccess && (
+        <button className="primary wide" onClick={() => void st.allowAccess()}>
+          Allow access to {st.savedHost}
+        </button>
+      )}
       {st.saveError != null && <p className="error">{st.saveError}</p>}
       <div className="row">
         <button onClick={() => void t.run()} disabled={t.isRunning}>

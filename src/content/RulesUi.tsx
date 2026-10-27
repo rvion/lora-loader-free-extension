@@ -53,6 +53,17 @@ export const RulesStrip = obs(function RulesStrip(p: { root: CardSt }) {
           ) : null}
         </span>
         <span className="tools">
+          <button
+            className={root.ads.isOn ? "rules-btn on" : "rules-btn"}
+            onClick={() => void root.ads.toggle()}
+            title={
+              root.ads.isOn
+                ? "Civitai's ads are hidden. Click to show them again"
+                : "Hide Civitai's ads on these pages"
+            }
+          >
+            improve experience
+          </button>
           <DockButton place={st.placement} />
           <button
             className={root.server.isOpen ? "icon on" : "icon"}

@@ -61,7 +61,7 @@ test("the copied block carries version, page, time, where, message, count and st
   if (row == null) throw new Error("no row");
   expect(svc.copyText([row])).toBe(
     [
-      "LoRA Manager Free 2.21.3 errors",
+      "Civitai to LoRA Manager 2.21.3 errors",
       "page: https://civitai.red/search/models?baseModel=Krea%202",
       "",
       "[2026-09-25T14:02:00.000Z] listing (×2): down",

@@ -1,7 +1,12 @@
 # Changelog
 
-## Unreleased (minor)
+## 2.21.8
 
+- New name, "Civitai to LoRA Manager (unofficial)", and an icon.
+- Hiding Civitai's ads is now off by default: the "improve experience"
+  button on the bar turns it on and off.
+- The extension reaches 127.0.0.1 and localhost from install. A LoRA
+  Manager on another machine asks Chrome's permission once, from the popup.
 - Every Civitai model card (home, search, tag pages, creators) shows
   "✓ LM" when the model is in your library, or a one click "⬇ Install" that
   downloads its latest version, with live progress on the card.

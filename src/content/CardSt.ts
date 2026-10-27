@@ -155,11 +155,36 @@ export class ServerSvc {
   /** the user closed the auto opened popover: stays closed until the address is saved again */
   dismissed = false;
   saveError: string | null = null;
+  /** chrome allows the saved address (agent/spec.md "host access") */
+  hasAccess = true;
 
   constructor(private st: CardSt) {
     makeAutoObservable<ServerSvc, "st">(this, { st: false });
     void getSettings().then((s) => this.applySaved(s.lmUrl, false));
     onSettingsChanged((s) => this.applySaved(s.lmUrl, true));
+    reaction(
+      () => [this.url, this.lmUnreachable],
+      () => void this.checkAccess(),
+    );
+  }
+
+  get host(): string {
+    try {
+      return new URL(this.url).hostname;
+    } catch {
+      return this.url;
+    }
+  }
+
+  async checkAccess(): Promise<void> {
+    if (this.url === "") return;
+    const ok = await send({ kind: "hostAccess", url: this.url }).catch(() => true);
+    runInAction(() => (this.hasAccess = ok));
+  }
+
+  /** a content script cannot ask chrome for a host: the options page does */
+  openOptions(): void {
+    send({ kind: "openOptions" }).catch((e: unknown) => reportError("open the extension options", e));
   }
 
   applySaved(url: string, recheck: boolean): void {

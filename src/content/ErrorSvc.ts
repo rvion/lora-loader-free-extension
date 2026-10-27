@@ -58,7 +58,7 @@ export class ErrorSvc {
   }
 
   copyText(rows: ErrorRow[]): string {
-    const head = [`LoRA Manager Free ${this.meta.version} errors`, `page: ${this.meta.url()}`, ""];
+    const head = [`Civitai to LoRA Manager ${this.meta.version} errors`, `page: ${this.meta.url()}`, ""];
     const body = rows.flatMap((r) => {
       const count = r.count > 1 ? ` (×${r.count})` : "";
       const line = `[${new Date(r.lastAt).toISOString()}] ${r.where}${count}: ${r.message}`;

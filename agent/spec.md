@@ -108,7 +108,7 @@ Every failure the page part of the extension meets shows in a small panel,
 bottom right, over civitai, never only in the console:
 
 ```
-⚠ LoRA Manager Free · 2 errors            [Copy all] ✕
+⚠ Civitai to LoRA Manager · 2 errors            [Copy all] ✕
 listing: LoRA Manager GET /api/lm/check-models-exist:
   did not answer in 5 s at http://…          ×3 · 14:02  [Copy]
 civitai details: civitai: GET models → HTTP 429  14:03  [Copy]
@@ -136,12 +136,17 @@ above.
 
 ## Ads
 
-Civitai's ads are removed, visibly: each ad container gets a red glowing
-ring with a "✕ ad removed" label, fades and shrinks out over ~1.4 s, then is
-hidden. An ad container is the bottom ad bar (`[data-adhesive-ad]`), or the
-nearest wrapper of a `visit advertiser` link: the right rail on model pages,
-or the ad box in a grid. A container civitai re-renders is caught again on
-the next pass. No setting: always on.
+Off by default. The bar's `improve experience` button turns it on and off
+(lit while on); the choice is saved and applies to every open civitai tab
+at once. Off is the default so the store sees one purpose (the library),
+and ad removal stays an explicit opt in.
+
+While on, civitai's ads are removed, visibly: each ad container gets a red
+glowing ring with a "✕ ad removed" label, fades and shrinks out over ~1.4 s,
+then is hidden. An ad container is the bottom ad bar (`[data-adhesive-ad]`),
+or the nearest wrapper of a `visit advertiser` link: the right rail on model
+pages, or the ad box in a grid. A container civitai re-renders is caught
+again on the next pass. Turning it off shows the hidden ads again.
 
 ## Look: impossible to miss
 
@@ -300,7 +305,7 @@ is open the card's folder fields preview the draft live.
 its own strip under civitai's header (see "dock and free mode"):
 
 ```
-[LM] [Rules (5) ▾] [Focus: Illustrious, Krea 2 ▾]  here: tag style → loras / {base}/styles   ⇱ ⚙
+[LM] [Rules (5) ▾] [Focus: Illustrious, Krea 2 ▾]  here: tag style → loras / {base}/styles   [improve experience] ⇱ ⚙
 ```
 
 The "here" line is the saved rule this page's context matches (on a model
@@ -308,7 +313,16 @@ page: the first rule this model matches), else "no rule for this page yet".
 ⚙ opens the server popover: the LoRA Manager address and Restart ComfyUI;
 it closes on ⚙, ✕, Esc or a click outside, opens by itself when LoRA
 Manager is unreachable, and once closed stays closed until the address is
-saved again.
+saved again. When Chrome has not allowed the saved address yet (see "host
+access"), the popover says so with an `Allow…` button that opens the
+extension options, where the grant happens.
+
+**Host access**: the extension can always reach `127.0.0.1` and `localhost`
+(any port). Any other address needs Chrome's OK once per host: Save in the
+popup or the options page asks for it, and the popup shows `Allow access to
+<host>` while the saved address is not allowed. A content script cannot ask
+Chrome, hence the detour from the card. Without the grant, every LM call
+fails with "Chrome has not allowed <host> yet".
 
 **Rules popover** (opened by the button, closed by it, ✕, Esc or a click
 outside; the strip's layout never changes):

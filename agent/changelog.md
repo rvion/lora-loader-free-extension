@@ -3,6 +3,23 @@
 Newest first. Each entry narrates WHAT changed and WHY, for the next
 session that arrives with no context.
 
+## 2026-10-27
+
+- Public release prep for GitHub and the Chrome Web Store. Renamed to
+  "Civitai to LoRA Manager (unofficial)": the old name read as the official
+  LoRA Manager extension, which the store treats as impersonation.
+- Ad removal is opt in (AdSvc reads `improveExperience` from storage, the
+  bar's `improve experience` button flips it, off restores the hidden ads):
+  the store's single purpose rule.
+- Host access: install time hosts are civitai, 127.0.0.1 and localhost;
+  any other LM host is an optional permission granted from an extension
+  page (hostAccess.ts). All hosts at install time meant in depth review and
+  the scariest install warning. The card cannot ask Chrome, so its ⚙
+  popover offers `Allow…`, which opens the options page.
+- Icon: `.shipkit/identity/icon.svg`, a vector redraw of the old raster
+  icon. The build renders the manifest icons, brand.ts the identity kit.
+  `--release` builds without bumping, `release:files` zips for the store.
+
 ## 2026-09-28
 
 - File picks on the chip: the chip names what Get downloads with its size

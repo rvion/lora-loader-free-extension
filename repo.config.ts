@@ -4,6 +4,7 @@ export default defineRepo({
     // >>> shipkit ignored inputs — managed block, the traced audit writes it, edit outside the markers
     ignoredInputs: {
         test: [
+            'backups/**',
             'dist/**',
         ],
     },

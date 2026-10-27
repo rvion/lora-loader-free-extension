@@ -14,6 +14,16 @@ loaded. `bun run build` bumps the patch in package.json (`2.21.1` →
 package.json stays the one version source: commit its bump with the work.
 `shipkit bump minor` / `major` still moves the rest.
 
+`bun run release:files` builds with `--release` (no bump: the zip carries
+the committed version) and writes `.shipkit/chrome-web-store/` (gitignored):
+the store zip, also the GitHub release asset, and the 440×280 promo tile.
+`listing.md` there holds the store copy and the permission justifications.
+
+Icons have one source, `.shipkit/identity/icon.svg`: the build renders the
+manifest icons into `dist/icons/` and `.shipkit/identity/brand.ts` renders
+the identity kit (`public/`) from it (`scripts/icon.ts`).
+
+
 `src/shared/` is pure code imported by all three: URL parsing, type mapping,
 the LM client, the message protocol, storage keys.
 
@@ -21,8 +31,14 @@ the LM client, the message protocol, storage keys.
 
 - A content script fetch runs with the page's origin: CORS and Chrome's
   Private Network Access block civitai.com → 127.0.0.1.
-- The service worker has host permission on `http://*/*` for the configured
-  LM URL, so its fetches skip CORS.
+- The service worker's host permission skips CORS for the LM URL. It holds
+  `127.0.0.1` and `localhost` from install; any other LM host is an
+  optional host permission (`http://*/*`, `https://*/*`), granted per host
+  (pattern `<scheme>://<hostname>/*`, every port) from the popup or options
+  page (`src/shared/hostAccess.ts`). The background checks the grant before
+  each LM call and fails with a plain sentence instead of a CORS error.
+  Broad install time access would put the store listing into in depth
+  review and warn "read and change all your data on all websites".
 - Recent ComfyUI rejects a loopback request whose `Origin` host differs from
   `Host` (403). A `declarativeNetRequest` session rule removes `Origin` on
   requests that the extension itself sends (`tabIds: [-1]`) to the LM host,
