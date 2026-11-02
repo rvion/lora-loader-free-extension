@@ -26,8 +26,8 @@ Read the matching page before touching a surface:
 
 | read when touching… | page |
 |---|---|
-| any source file | `agent/coding.md` |
-| what the user sees, card and popup behaviour | `agent/spec.md` |
-| module layout, message flow, why the background owns every LM call | `agent/architecture.md` |
-| any call to LoRA Manager or Civitai | `agent/lora-manager-api.md` |
-| recent changes and why | `agent/changelog.md` |
+| any source file | → agent/coding.md |
+| what the user sees, card and popup behaviour | → agent/spec.md |
+| module layout, message flow, why the background owns every LM call | → agent/architecture.md |
+| any call to LoRA Manager or Civitai | → agent/lora-manager-api.md |
+| recent changes and why | → agent/changelog.md |
