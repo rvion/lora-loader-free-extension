@@ -18,7 +18,7 @@
         "@types/chrome": "^0.3.0",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
-        "rvlib-shipkit": "^2.10.0",
+        "rvlib-shipkit": "^2.11.0",
         "typescript": "^7.0.2"
     },
     "dependencies": {
