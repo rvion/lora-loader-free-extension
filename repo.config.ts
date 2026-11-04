@@ -13,7 +13,6 @@ export default defineRepo({
     name: 'lora-loader-free-extension',
     visibility: 'public',
     venues: [], // e.g. ['itch', 'steam'], selects which .shipkit/<venue>/ contracts are REQUIRED
-    social: [], // e.g. ['x', 'discord'], the .shipkit/social/<channel>/ post folders (+ .shipkit/discord/)
     tasks: [],  // repo commit-gate tasks; deps double as race guards
     // lint, typecheck, imports:check and cycles are cached on the tracked tree.
     // `test` runs every time until you say what it reads, because an
