@@ -1,6 +1,7 @@
 import { defineRepo } from 'rvlib-shipkit/src/repo-config.ts'
 
 export default defineRepo({
+    speaksAs: 'rvion',
     // >>> shipkit ignored inputs — managed block, the traced audit writes it, edit outside the markers
     ignoredInputs: {
         test: [
