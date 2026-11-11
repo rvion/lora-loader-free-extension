@@ -1,5 +1,6 @@
 ---
 status: open
+pinged: 2026-10-27
 kind: action
 created: 2026-10-27
 blocks: the Chrome Web Store listing
