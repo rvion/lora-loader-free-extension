@@ -12,6 +12,7 @@ export default defineRepo({
     // <<< shipkit ignored inputs
     identity: { colorLight: '#2193a1', colorDark: '#77d8e3' },
     name: 'lora-loader-free-extension',
+    id: 'lora-loader-free-extension',
     visibility: 'public',
     venues: [], // e.g. ['itch', 'steam'], selects which .shipkit/<venue>/ contracts are REQUIRED
     tasks: [],  // repo commit-gate tasks; deps double as race guards
