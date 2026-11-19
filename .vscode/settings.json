@@ -60,5 +60,13 @@
       "titleBar.inactiveBackground": "#51190699",
       "titleBar.inactiveForeground": "#e7e7e799"
    },
-   "peacock.color": "#511906"
+   "peacock.color": "#511906",
+
+   // shipkit's generated folders: never watched (SK039)
+   "files.watcherExclude": {
+      "**/.shipkit/cache/**": true,
+      "**/.shipkit/tmp/**": true,
+      "**/.shipkit/review/**": true,
+      "**/trailer/**/out/**": true
+   }
 }
