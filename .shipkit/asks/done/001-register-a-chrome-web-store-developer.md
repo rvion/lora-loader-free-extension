@@ -32,6 +32,6 @@ In **Account**, set the publisher name and verify the contact email (the dashboa
 
 Nothing else to do here: ask 002 carries the upload.
 
-**Answer**: the account exists: the dashboard holds the draft item `lndbjdcfheikiaohmfdhninonebdjegl` (his screenshot, 2026-11-19)
+**Answer**: the account exists: the dashboard holds the draft item `lndbjdcfheikiaohmfdhninonebdjegl` (his screenshot, 2026-11-19). Publisher contact email, shown on the public listing: `cushystudioai@gmail.com` (his pick, 2026-11-19), not his print address
 
 **Done when**: status flipped to done
