@@ -14,7 +14,7 @@ export default defineRepo({
     name: 'lora-loader-free-extension',
     id: 'lora-loader-free-extension',
     visibility: 'public',
-    venues: [], // e.g. ['itch', 'steam'], selects which .shipkit/<venue>/ contracts are REQUIRED
+    venues: ['chrome-web-store'], // selects which .shipkit/<venue>/ contracts are REQUIRED
     tasks: [],  // repo commit-gate tasks; deps double as race guards
     // lint, typecheck, imports:check and cycles are cached on the tracked tree.
     // `test` runs every time until you say what it reads, because an
