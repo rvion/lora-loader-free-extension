@@ -24,9 +24,9 @@ The draft item exists (`lndbjdcfheikiaohmfdhninonebdjegl`).
 
 Open **[Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole)**, the item. Go down the desk's cards in order: **Store listing**, **Privacy**, **Distribution**, **Test instructions**. **Save draft** after each tab.
 
-## 4. Check the account
+## 4. Set and verify the contact email
 
-**Why can't I submit?** (top right) lists what is still missing. Most often: the contact email of the **Account** tab is not verified yet (the dashboard sends a link).
+**Settings** page (left menu): enter the publisher's contact email, then click the link of the verification email. Publishing is refused until both are done. **Why can't I submit?** (top right) lists anything still missing.
 
 ## 5. Submit for review
 
