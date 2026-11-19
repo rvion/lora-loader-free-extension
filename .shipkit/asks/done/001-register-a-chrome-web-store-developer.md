@@ -1,5 +1,6 @@
 ---
-status: open
+status: done
+closed: 2026-11-19
 pinged: 2026-10-27
 kind: purchase
 created: 2026-10-27
@@ -10,7 +11,7 @@ blocks: the Chrome Web Store listing
 
 **Why**: only the account owner can register and pay the one time 5 USD fee
 
-## 1. Register
+## 1. Register ✅
 
 Open **[Chrome Web Store developer dashboard](https://chrome.google.com/webstore/devconsole)**, sign in with the Google account that will own the listing, accept the developer agreement, then click **Pay registration fee**.
 
@@ -19,7 +20,7 @@ Open **[Chrome Web Store developer dashboard](https://chrome.google.com/webstore
 | fee | `5 USD`, one time |
 | account | needs 2 step verification on |
 
-## 2. Fill the account tab
+## 2. Fill the account tab (the contact email: check it is verified)
 
 In **Account**, set the publisher name and verify the contact email (the dashboard sends a link). Publishing stays blocked until the email is verified.
 
@@ -31,6 +32,6 @@ In **Account**, set the publisher name and verify the contact email (the dashboa
 
 Nothing else to do here: ask 002 carries the upload.
 
-**Answer**: _(fill in / check off)_
+**Answer**: the account exists: the dashboard holds the draft item `lndbjdcfheikiaohmfdhninonebdjegl` (his screenshot, 2026-11-19)
 
 **Done when**: status flipped to done

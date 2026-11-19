@@ -16,8 +16,15 @@ package.json stays the one version source: commit its bump with the work.
 
 `bun run release:files` builds with `--release` (no bump: the zip carries
 the committed version) and writes `.shipkit/chrome-web-store/` (gitignored):
-the store zip, also the GitHub release asset, and the 440×280 promo tile.
-`listing.md` there holds the store copy and the permission justifications.
+the store zip, also the GitHub release asset, the 128 px store icon (96 px
+of artwork in a transparent border) and the 440×280 and 1400×560 promo
+tiles. The store refuses an alpha channel on tiles and screenshots, so
+those go through `scripts/png.ts` (24-bit RGB), never `canvas.encode`.
+`bun run release:shots` writes `screenshots/` (1280×800): the built
+extension in a real chromium on civitai.com, against the LoRA Manager at
+`LM_URL` (headless chromium meets civitai's Cloudflare wall, so the window
+is real and parked off screen). `listing.md` there is every dashboard
+field in the dashboard's order, read by the hub's stores desk.
 
 Icons have one source, `.shipkit/identity/icon.svg`: the build renders the
 manifest icons into `dist/icons/` and `.shipkit/identity/brand.ts` renders
