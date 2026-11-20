@@ -4,6 +4,7 @@ pinged: 2026-10-27
 kind: action
 created: 2026-10-27
 blocks: the Chrome Web Store listing
+thread: ask:002-fill-the-chrome-web-store-listing-and-submit
 ---
 
 # fill the Chrome Web Store listing, then submit it for review
