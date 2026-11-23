@@ -1,6 +1,6 @@
 {
     "name": "lora-loader-free-extension",
-    "version": "2.21.8",
+    "version": "2.21.9",
     "private": true,
     "type": "module",
     "scripts": {
