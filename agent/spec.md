@@ -73,8 +73,9 @@ OR), plus an on/off switch, saved.
 
 - **Focus ▾** opens a popover: the on/off switch, then per field the values
   as toggles: quick picks from this page's cards (base models, tags, most
-  frequent first) plus the values already in the focus, and a text box to
-  add one. The button reads `Focus: off`, or `Focus: Illustrious, LoRA`.
+  frequent first) plus the values already in the focus. Base model, tag and
+  name/tag has each have a text box (Enter adds), so a base model no card on
+  this page shows (MiniMax H3, Moss, …) can be focused too. The button reads `Focus: off`, or `Focus: Illustrious, LoRA`.
 - While focus is on and has at least one value, install chips (tiles and
   the model page's image alike) only show for base models (versions) that
   match it. `✓` and newer chips of models you have always show. What focus
@@ -279,7 +280,7 @@ field is enough (OR); a rule with no condition cannot be saved:
 |---|---|
 | tags | the model has one of these civitai tags |
 | name or tag contains | one of these texts is in the model name or in one of its tags (case insensitive) |
-| base model | the version's base model is one of these (`Krea 2`, `Anima`, …) |
+| base model | the version's base model is one of these (`Krea 2`, `Anima`, …), ignoring case, spaces and punctuation (`minimax h3` matches `MiniMax-H3`) |
 | type | the model type is one of LoRA / Checkpoint / Embedding |
 
 **Order**: the first matching rule wins. While the rules popover is open,

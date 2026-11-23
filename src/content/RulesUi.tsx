@@ -378,11 +378,27 @@ export const FocusButton = obs(function FocusButton(p: { st: FocusSvc; picks: Pi
   );
 });
 
+function AddBox(p: { placeholder: string; onAdd: (v: string) => void }) {
+  const [text, setText] = useState("");
+  return (
+    <input
+      value={text}
+      placeholder={p.placeholder}
+      onChange={(e) => setText(e.currentTarget.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          p.onAdd(text);
+          setText("");
+        }
+      }}
+    />
+  );
+}
+
 const FocusPopover = obs(function FocusPopover(p: { st: FocusSvc; picks: Picks }) {
   const st = p.st;
   const ref = useRef<HTMLDivElement>(null);
   usePopoverDismiss(ref, () => st.close());
-  const [text, setText] = useState("");
   const union = (a: string[], b: string[]) => {
     const out = [...a];
     for (const v of b) if (!out.some((x) => x.toLowerCase() === v.toLowerCase())) out.push(v);
@@ -415,7 +431,6 @@ const FocusPopover = obs(function FocusPopover(p: { st: FocusSvc; picks: Picks }
       </p>
       <div className="focus-field">
         <span className="cond-field">base model</span>
-        {bases.length === 0 && <span className="muted">none seen on this page yet</span>}
         {bases.map((b) => (
           <button
             key={b}
@@ -425,6 +440,7 @@ const FocusPopover = obs(function FocusPopover(p: { st: FocusSvc; picks: Picks }
             {b}
           </button>
         ))}
+        <AddBox placeholder="any base model, Enter" onAdd={(v) => st.toggle("bases", v)} />
       </div>
       <div className="focus-field">
         <span className="cond-field">type</span>
@@ -449,23 +465,14 @@ const FocusPopover = obs(function FocusPopover(p: { st: FocusSvc; picks: Picks }
             {t}
           </button>
         ))}
+        <AddBox placeholder="any tag, Enter" onAdd={(v) => st.toggle("tags", v)} />
       </div>
       <div className="focus-field">
         <span className="cond-field">name/tag has</span>
         {st.cond.words.map((w) => (
           <CondChip key={w} field="words" value={w} onRemove={() => st.toggle("words", w)} />
         ))}
-        <input
-          value={text}
-          placeholder="add a text, Enter"
-          onChange={(e) => setText(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              st.toggle("words", text);
-              setText("");
-            }
-          }}
-        />
+        <AddBox placeholder="add a text, Enter" onAdd={(v) => st.toggle("words", v)} />
       </div>
     </div>
   );

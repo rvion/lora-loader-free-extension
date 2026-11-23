@@ -29,6 +29,13 @@ test("filled fields AND together, values inside a field OR", () => {
   expect(matchRule(cond({ types: ["checkpoints"] }), pixie, null)).toBe(false);
 });
 
+test("a typed base model ignores case, spaces and punctuation", () => {
+  expect(matchRule(cond({ bases: ["minimax h3"] }), pixie, "MiniMax-H3")).toBe(true);
+  expect(matchRule(cond({ bases: ["flux1 d"] }), pixie, "Flux.1 D")).toBe(true);
+  expect(matchRule(cond({ bases: ["flux.1 s"] }), pixie, "Flux.1 D")).toBe(false);
+  expect(matchRule(cond({ bases: ["moss"] }), pixie, null)).toBe(false);
+});
+
 test("name/tag has matches inside the name or inside a tag", () => {
   expect(matchRule(cond({ words: ["heroes of might"] }), pixie, null)).toBe(true);
   expect(matchRule(cond({ words: ["homm"] }), pixie, null)).toBe(true);

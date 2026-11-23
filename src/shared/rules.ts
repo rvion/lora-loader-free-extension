@@ -27,6 +27,8 @@ export const isEmptyCond = (c: RuleCond): boolean =>
   c.tags.length + c.words.length + c.bases.length + c.types.length === 0;
 
 const low = (s: string) => s.trim().toLowerCase();
+/** a typed base model: `minimax h3` is civitai's `MiniMax-H3` */
+const loose = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export function matchRule(cond: RuleCond, m: ModelFacts, baseModel: string | null): boolean {
   if (isEmptyCond(cond)) return false;
@@ -38,7 +40,7 @@ export function matchRule(cond: RuleCond, m: ModelFacts, baseModel: string | nul
     !cond.words.some((w) => name.includes(low(w)) || tags.some((t) => t.includes(low(w))))
   )
     return false;
-  if (cond.bases.length > 0 && !cond.bases.some((b) => low(b) === low(baseModel ?? "")))
+  if (cond.bases.length > 0 && (baseModel == null || !cond.bases.some((b) => loose(b) === loose(baseModel))))
     return false;
   if (cond.types.length > 0 && (m.prefix == null || !cond.types.includes(m.prefix))) return false;
   return true;
