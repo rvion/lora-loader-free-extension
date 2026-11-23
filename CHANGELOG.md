@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased (minor)
+## 2.22.0
 
 - Focus on any base model, even one no card on the page shows: the base
   model and tag fields of the Focus popover now take typed text.
