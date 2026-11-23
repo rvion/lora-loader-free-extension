@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { obs } from "rvlib-mobx";
 
 import { DockButton, DockMiss, Movable, startDrag } from "src/content/Movable.tsx";
@@ -12,7 +12,8 @@ import type { LmPrefix } from "src/shared/civitai.ts";
 import { rootLabels } from "src/shared/paths.ts";
 import { summarizeCond, typeName, type CondField, type Rule } from "src/shared/rules.ts";
 
-export type Picks = { tags: string[]; bases: string[] };
+/** allBases: every base model civitai knows, suggested as you type */
+export type Picks = { tags: string[]; bases: string[]; allBases: string[] };
 
 /** the bar, identical on every page (agent/spec.md "rules"): LM, Rules, Focus, what applies here, tools */
 export const RulesStrip = obs(function RulesStrip(p: { root: CardSt }) {
@@ -112,7 +113,7 @@ export const RulesButton = obs(function RulesButton(p: {
       >
         Rules ({st.rules.length}) ▾
       </button>
-      {st.isOpen && <RulesPopover st={st} picks={p.picks ?? { tags: [], bases: [] }} />}
+      {st.isOpen && <RulesPopover st={st} picks={p.picks ?? { tags: [], bases: [], allBases: [] }} />}
     </span>
   );
 });
@@ -279,6 +280,7 @@ const TYPES: LmPrefix[] = ["loras", "checkpoints", "embeddings"];
 const AddCond = obs(function AddCond(p: { st: RulesSvc; picks: Picks }) {
   const [field, setField] = useState<CondField | null>(null);
   const [text, setText] = useState("");
+  const listId = useId();
   const st = p.st;
   const d = st.draft;
   if (d == null) return null;
@@ -332,6 +334,7 @@ const AddCond = obs(function AddCond(p: { st: RulesSvc; picks: Picks }) {
           <input
             autoFocus
             value={text}
+            list={field === "bases" ? listId : undefined}
             placeholder={
               field === "words"
                 ? "text in the name or a tag"
@@ -344,6 +347,7 @@ const AddCond = obs(function AddCond(p: { st: RulesSvc; picks: Picks }) {
               if (e.key === "Enter") add(text);
             }}
           />
+          {field === "bases" && <Suggest id={listId} options={p.picks.allBases} />}
           {picks.length > 0 && (
             <span className="picks">
               {picks.map((v) => (
@@ -378,20 +382,36 @@ export const FocusButton = obs(function FocusButton(p: { st: FocusSvc; picks: Pi
   );
 });
 
-function AddBox(p: { placeholder: string; onAdd: (v: string) => void }) {
-  const [text, setText] = useState("");
+/** the suggestions of a text box; any text is still accepted */
+function Suggest(p: { id: string; options: string[] }) {
   return (
-    <input
-      value={text}
-      placeholder={p.placeholder}
-      onChange={(e) => setText(e.currentTarget.value)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          p.onAdd(text);
-          setText("");
-        }
-      }}
-    />
+    <datalist id={p.id}>
+      {p.options.map((o) => (
+        <option key={o} value={o} />
+      ))}
+    </datalist>
+  );
+}
+
+function AddBox(p: { placeholder: string; options?: string[]; onAdd: (v: string) => void }) {
+  const [text, setText] = useState("");
+  const listId = useId();
+  return (
+    <>
+      <input
+        value={text}
+        placeholder={p.placeholder}
+        list={p.options != null ? listId : undefined}
+        onChange={(e) => setText(e.currentTarget.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            p.onAdd(text);
+            setText("");
+          }
+        }}
+      />
+      {p.options != null && <Suggest id={listId} options={p.options} />}
+    </>
   );
 }
 
@@ -440,7 +460,11 @@ const FocusPopover = obs(function FocusPopover(p: { st: FocusSvc; picks: Picks }
             {b}
           </button>
         ))}
-        <AddBox placeholder="any base model, Enter" onAdd={(v) => st.toggle("bases", v)} />
+        <AddBox
+          placeholder="any base model, Enter"
+          options={p.picks.allBases}
+          onAdd={(v) => st.toggle("bases", v)}
+        />
       </div>
       <div className="focus-field">
         <span className="cond-field">type</span>

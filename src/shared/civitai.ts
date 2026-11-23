@@ -262,6 +262,25 @@ export async function fetchCivitaiModels(
   return out;
 }
 
+/** agent/spec.md "every base model": civitai's `BaseModel` enum, else its active subset */
+export function parseCivitaiBaseModels(json: unknown): string[] {
+  if (typeof json !== "object" || json == null) return [];
+  const j = json as Record<string, unknown>;
+  const raw = Array.isArray(j.BaseModel) ? j.BaseModel : j.ActiveBaseModel;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((x): x is string => typeof x === "string" && x.trim() !== "")
+    .sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+}
+
+export async function fetchCivitaiBaseModels(origin: string): Promise<string[]> {
+  const res = await fetch(`${origin}/api/v1/enums`);
+  if (!res.ok) throw new Error(`civitai: GET enums → HTTP ${res.status}`);
+  const names = parseCivitaiBaseModels(await res.json());
+  if (names.length === 0) throw new Error("civitai: GET enums → no base model list in the answer");
+  return names;
+}
+
 /** agent/spec.md "newer versions": same base model, published later; the latest such wins */
 export function newerVersion(
   versions: CivitaiVersion[],

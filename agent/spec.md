@@ -75,7 +75,10 @@ OR), plus an on/off switch, saved.
   as toggles: quick picks from this page's cards (base models, tags, most
   frequent first) plus the values already in the focus. Base model, tag and
   name/tag has each have a text box (Enter adds), so a base model no card on
-  this page shows (MiniMax H3, Moss, …) can be focused too. The button reads `Focus: off`, or `Focus: Illustrious, LoRA`.
+  this page shows (MiniMax H3, MOSS Image, …) can be focused too. The base
+  model box suggests every base model civitai knows (see "every base
+  model" below) and still takes any text. The button reads `Focus: off`, or
+  `Focus: Illustrious, LoRA`.
 - While focus is on and has at least one value, install chips (tiles and
   the model page's image alike) only show for base models (versions) that
   match it. `✓` and newer chips of models you have always show. What focus
@@ -349,7 +352,8 @@ New rule from this page                  (or: Editing rule 2)
 - **Conditions** show as removable chips. `+ condition` opens a small menu:
   pick the field, type a value (Enter adds it), or click a quick pick from
   the values seen on this page's cards (their tags and base models, most
-  frequent first).
+  frequent first). The base model field suggests every base model civitai
+  knows, as you type.
 - **matches N of M cards here** counts the draft against the model cards on
   screen.
 - **Save rule** / **Update rule**; ✎ loads a rule into the editor, **+ New**
@@ -366,6 +370,14 @@ buildings, objects, animal, action. Each is `tag <category> → last used root
 / {base}/<category>` (spaces become dashes: `{base}/base-model`). The
 popover's **+ Categories** button adds back any category missing from the
 list; it never duplicates one (same conditions = same rule).
+
+## Every base model
+
+The extension carries no list of base models. It reads civitai's own list
+(`GET /api/v1/enums`, its `BaseModel` array, every base model civitai has
+ever had) and keeps it in `chrome.storage.local` for a day. Read fails →
+the last kept list stays, the error shows in the error panel, and typed text
+still works: no base model is ever refused for being unknown.
 
 ## The popup
 

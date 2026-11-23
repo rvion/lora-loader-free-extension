@@ -94,6 +94,18 @@ export async function setPlacement(id: OverlayId, p: SavedPlacement): Promise<vo
   await chrome.storage.local.set({ [`placement2:${id}`]: p });
 }
 
+/** civitai's base model list as last read (agent/spec.md "every base model") */
+export type KnownBases = { names: string[]; at: number };
+
+export async function getKnownBases(): Promise<KnownBases | null> {
+  const got = await chrome.storage.local.get("knownBases");
+  return (got.knownBases as KnownBases | undefined) ?? null;
+}
+
+export async function setKnownBases(k: KnownBases): Promise<void> {
+  await chrome.storage.local.set({ knownBases: k });
+}
+
 /** the tag rules of earlier versions, read once to migrate them */
 type LegacyTagRule = { tag: string; root: string | null; sub: string };
 

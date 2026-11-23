@@ -1,6 +1,7 @@
 import { makeAutoObservable, reaction, runInAction } from "mobx";
 
 import { AdSvc } from "src/content/AdSvc.ts";
+import { BasesSvc } from "src/content/BasesSvc.ts";
 import { EditSvc } from "src/content/EditSvc.ts";
 import { FocusSvc } from "src/content/FocusSvc.ts";
 import { factsOf, ListingSvc } from "src/content/ListingSvc.ts";
@@ -32,6 +33,7 @@ export class CardSt {
   ads: AdSvc;
   rules: RulesSvc;
   focus: FocusSvc;
+  bases: BasesSvc;
   errors: ErrorSvc;
   private disposers: (() => void)[] = [];
 
@@ -43,6 +45,7 @@ export class CardSt {
     setErrorSink(this.errors);
     this.page = new PageSvc();
     this.focus = new FocusSvc();
+    this.bases = new BasesSvc();
     this.rules = new RulesSvc();
     this.edit = new EditSvc();
     this.listing = new ListingSvc({
@@ -115,12 +118,14 @@ export class CardSt {
   }
 
   /** quick picks for rules and focus: this model's tags and bases, else what the page's tiles show */
-  get picks(): { tags: string[]; bases: string[] } {
-    if (this.page.isModelPage) return this.page.picks;
-    return {
-      tags: this.rules.stats.tags.map((t) => t[0]),
-      bases: this.rules.stats.bases.map((b) => b[0]),
-    };
+  get picks(): { tags: string[]; bases: string[]; allBases: string[] } {
+    const here = this.page.isModelPage
+      ? this.page.picks
+      : {
+          tags: this.rules.stats.tags.map((t) => t[0]),
+          bases: this.rules.stats.bases.map((b) => b[0]),
+        };
+    return { ...here, allBases: this.bases.all };
   }
 
   openRulesHere(): Promise<void> {

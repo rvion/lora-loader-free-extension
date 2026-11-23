@@ -4,6 +4,7 @@ import {
   fileLabel,
   lmPrefixForCivitaiType,
   modelIdFromHref,
+  parseCivitaiBaseModels,
   parseCivitaiModel,
   parseCivitaiModelUrl,
   baseGroups,
@@ -186,4 +187,12 @@ test("versions group by base model, latest per base, what you have per base", ()
     ["Krea 2", 3, false],
     ["Anima", null, false],
   ]);
+});
+
+test("base models: civitai's full list, sorted, junk dropped; active list as fallback", () => {
+  const all = { BaseModel: ["SD 1.5", "MiniMax H3", 3, "", "anima", "MOSS Image"] };
+  expect(parseCivitaiBaseModels(all)).toEqual(["anima", "MiniMax H3", "MOSS Image", "SD 1.5"]);
+  expect(parseCivitaiBaseModels({ ActiveBaseModel: ["Krea 2"] })).toEqual(["Krea 2"]);
+  expect(parseCivitaiBaseModels({ ModelType: ["LORA"] })).toEqual([]);
+  expect(parseCivitaiBaseModels(null)).toEqual([]);
 });
