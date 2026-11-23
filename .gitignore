@@ -8,7 +8,6 @@ backups/
 
 # >>> shipkit gitignore policy (SK004) — managed block, edit outside only
 .shipkit/*
-!.shipkit/asks/
 !.shipkit/hooks/
 !.shipkit/identity/
 !.shipkit/assets/
