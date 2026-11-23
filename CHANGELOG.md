@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased (minor)
+
+- Focus on any base model, even one no card on the page shows: the base
+  model and tag fields of the Focus popover now take typed text.
+- The base model boxes (Focus, and a rule's conditions) suggest every base
+  model Civitai knows as you type, read from Civitai itself, so new ones
+  appear without an update.
+- A typed base model ignores case, spaces and punctuation: `minimax h3`
+  matches `MiniMax-H3`.
+
 ## 2.21.8
 
 - New name, "Civitai to LoRA Manager (unofficial)", and an icon.
